@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+version = "0.0.1"
+name = "easyparser"
+authors = [
+  { name = "trducng", email = "trungduc1992@gmail.com" },
+  { name = "tadashi", email = "taprosoft@gmail.com" },
+]
+description = "A fast and light-weight library for ingesting and chunking files"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Development Status :: 2 - Pre-Alpha"
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["coverage", "pytest", "pytest-cov", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine", "papermill"]
+
+[project.urls]
+Homepage = "https://github.com/easyparser/easyparser"
+Repository = "https://github.com/easyparser/easyparser"
+
+[tool.setuptools.packages.find]
+include = ["easyparser", "easyparser.*"]
+
+[tool.isort]
+profile = "black"
