@@ -74,7 +74,7 @@ def merge_splits(
     return chunks
 
 
-def by_characters(
+def chunk_by_characters(
     text: str,
     chunk_size: int = 4000,
     chunk_overlap: int = 200,
@@ -155,4 +155,4 @@ def by_characters(
     return _split_text(text, separators)
 
 
-__all__ = ["by_characters"]
+__all__ = ["chunk_by_characters"]
