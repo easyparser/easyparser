@@ -1,20 +1,9 @@
 from pathlib import Path
 
-from ..base import Document, Origin
-from .base import Loader
+from ..base import Snippet, Origin
 
 
-class VLMPDFLoader(Loader):
-    """Load PDFs using VLM."""
-
-    ...
-
-
-class DoclingLoader(Loader):
-    pass
-
-
-def pdf_by_pymupdf(file_path: Path | str) -> list[Document]:
+def pdf_by_pymupdf(file_path: Path | str) -> list[Snippet]:
     """Load a PDF file using PyMuPDF."""
     try:
         import pymupdf  # noqa
@@ -29,7 +18,7 @@ def pdf_by_pymupdf(file_path: Path | str) -> list[Document]:
     document.close()
 
     return [
-        Document(
+        Snippet(
             id=file_path.stem,
             text=text,
             content=text,
@@ -44,7 +33,7 @@ def pdf_by_pymupdf(file_path: Path | str) -> list[Document]:
     ]
 
 
-def pdf_by_pymupdf4llm(file_path) -> list[Document]:
+def pdf_by_pymupdf4llm(file_path) -> list[Snippet]:
     try:
         from pymupdf4llm.llama.pdf_markdown_reader import PDFMarkdownReader
     except ImportError:
@@ -53,7 +42,7 @@ def pdf_by_pymupdf4llm(file_path) -> list[Document]:
     reader = PDFMarkdownReader()
     outputs = reader.load_data(file_path)
     documents = [
-        Document(
+        Snippet(
             id=file_path.stem,
             text=each.text,
             content=each.text,
@@ -70,7 +59,7 @@ def pdf_by_pymupdf4llm(file_path) -> list[Document]:
     return documents
 
 
-def pdf_by_extractous(file_path: Path | str) -> list[Document]:
+def pdf_by_extractous(file_path: Path | str) -> list[Snippet]:
     try:
         from extractous import Extractor
     except ImportError:
@@ -80,7 +69,7 @@ def pdf_by_extractous(file_path: Path | str) -> list[Document]:
     extr = Extractor()
     result, metadata = extr.extract_file_to_string(str(file_path))
     return [
-        Document(
+        Snippet(
             id=Path(file_path).stem,
             text=result,
             content=result,
@@ -95,7 +84,7 @@ def pdf_by_extractous(file_path: Path | str) -> list[Document]:
     ]
 
 
-def pdf_by_unstructured(file_path: Path | str, **kwargs) -> list[Document]:
+def pdf_by_unstructured(file_path: Path | str, **kwargs) -> list[Snippet]:
     try:
         from unstructured.partition.pdf import partition_pdf
     except ImportError:
@@ -115,7 +104,7 @@ def pdf_by_unstructured(file_path: Path | str, **kwargs) -> list[Document]:
             else {}
         )
         output.append(
-            Document(
+            Snippet(
                 id=element.id,
                 text=element.text,
                 content=element.text,
@@ -131,9 +120,9 @@ def pdf_by_unstructured(file_path: Path | str, **kwargs) -> list[Document]:
     return output
 
 
-def pdf_by_docling(file_path: Path | str, **kwargs) -> list[Document]:
+def pdf_by_docling(file_path: Path | str, **kwargs) -> list[Snippet]:
     ...
 
 
-def pdf_by_vlm(file_path: Path | str, **kwargs) -> list[Document]:
+def pdf_by_vlm(file_path: Path | str, **kwargs) -> list[Snippet]:
     ...

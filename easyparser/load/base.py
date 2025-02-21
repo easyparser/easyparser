@@ -1,4 +1,4 @@
-from ..base import Document, Origin
+from ..base import Snippet, Origin
 
 class Loader:
     ...
