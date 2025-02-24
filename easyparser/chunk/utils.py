@@ -54,7 +54,6 @@ def merge_splits(
 
     for split in splits:
         split_len = length_fn(split)
-        print(split, split_len, total, separator_len)
         if total + split_len + (separator_len if current else 0) > chunk_size:
             if current:
                 # Join current chunks and add to final list
@@ -85,3 +84,7 @@ def merge_splits(
             chunks.append(chunk)
 
     return chunks
+
+
+def word_len(text: str) -> int:
+    return len(text.split())

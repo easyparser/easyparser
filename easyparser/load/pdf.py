@@ -27,6 +27,7 @@ def pdf_by_pymupdf(file_path: Path | str) -> list[Snippet]:
                 source=file_path.as_posix(),
                 location={},
                 getter="",
+                file_type="pdf",
             ),
             metadata={},
         )
@@ -51,6 +52,7 @@ def pdf_by_pymupdf4llm(file_path) -> list[Snippet]:
                 source=file_path.as_posix(),
                 location={},
                 getter="",
+                file_type="pdf",
             ),
             metadata={},
         )
@@ -78,6 +80,7 @@ def pdf_by_extractous(file_path: Path | str) -> list[Snippet]:
                 source=file_path.as_posix(),
                 location={},
                 getter="",
+                file_type="pdf",
             ),
             metadata=metadata,
         )
@@ -113,6 +116,7 @@ def pdf_by_unstructured(file_path: Path | str, **kwargs) -> list[Snippet]:
                     source=file_path_str,
                     location=coord,
                     getter="",
+                    file_type="pdf",
                 ),
                 metadata=element.metadata.to_dict(),
             )

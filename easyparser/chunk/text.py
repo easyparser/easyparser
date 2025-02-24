@@ -2,7 +2,7 @@ import re
 from typing import Callable, Literal, Optional
 
 from ..base import Snippet
-from .utils import merge_splits, split_with_regex
+from .utils import merge_splits, split_with_regex, word_len
 
 _whitespace_pattern = re.compile(r"\s+")
 _non_whitespace_separators = [  # from https://github.com/isaacus-dev/semchunk
@@ -34,10 +34,6 @@ _non_whitespace_separators = [  # from https://github.com/isaacus-dev/semchunk
 ]
 
 
-def len_word(text: str) -> int:
-    return len(text.split())
-
-
 def _default_separators(text):
     """Get the default separators based on the text"""
     whitespaces = _whitespace_pattern.findall(text)
@@ -55,7 +51,7 @@ def chunk_by_characters(
     text: str | Snippet,
     chunk_size: int = 4000,
     chunk_overlap: int = 200,
-    length_fn: Callable[[str], int] = len_word,
+    length_fn: Callable[[str], int] = word_len,
     separators: Optional[list[str]] = None,
     keep_separator: bool | Literal["start", "end"] = "start",
     is_separator_regex: bool = False,
@@ -103,7 +99,6 @@ def chunk_by_characters(
         # split text using the selected separator
         _separator = separator if is_separator_regex else re.escape(separator)
         splits = split_with_regex(text, _separator, keep_separator=keep_separator)
-        print(splits, _separator, new_separators)
 
         final_chunks = []
         good_splits = []
