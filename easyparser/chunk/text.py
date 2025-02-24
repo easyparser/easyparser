@@ -1,9 +1,8 @@
-from typing import Callable, Optional, Literal
 import re
+from typing import Callable, Literal, Optional
 
-from .utils import split_with_regex, merge_splits
 from ..base import Snippet
-
+from .utils import merge_splits, split_with_regex
 
 _whitespace_pattern = re.compile(r"\s+")
 _non_whitespace_separators = [  # from https://github.com/isaacus-dev/semchunk

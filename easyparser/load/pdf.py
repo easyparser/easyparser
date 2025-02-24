@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ..base import Snippet, Origin
+from ..base import Origin, Snippet
 
 
 def pdf_by_pymupdf(file_path: Path | str) -> list[Snippet]:
@@ -120,9 +120,7 @@ def pdf_by_unstructured(file_path: Path | str, **kwargs) -> list[Snippet]:
     return output
 
 
-def pdf_by_docling(file_path: Path | str, **kwargs) -> list[Snippet]:
-    ...
+def pdf_by_docling(file_path: Path | str, **kwargs) -> list[Snippet]: ...
 
 
-def pdf_by_vlm(file_path: Path | str, **kwargs) -> list[Snippet]:
-    ...
+def pdf_by_vlm(file_path: Path | str, **kwargs) -> list[Snippet]: ...

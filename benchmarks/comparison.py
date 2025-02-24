@@ -2,14 +2,15 @@ import time
 from pathlib import Path
 
 start = time.time()
-from unstructured.partition.pdf import partition_pdf
+from unstructured.partition.pdf import partition_pdf  # noqa: E402
+
 print(f"Import unstructured {time.time() - start}")
 
 start = time.time()
-from easyparser.load.pdf import pdf_by_pymupdf
-from easyparser.chunk.text import chunk_by_characters
-print(f"Import easyparser {time.time() - start}")
+from easyparser.chunk.text import chunk_by_characters  # noqa: E402
+from easyparser.load.pdf import pdf_by_pymupdf  # noqa: E402
 
+print(f"Import easyparser {time.time() - start}")
 
 
 if __name__ == "__main__":

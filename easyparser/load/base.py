@@ -1,4 +1,1 @@
-from ..base import Snippet, Origin
-
-class Loader:
-    ...
+class Loader: ...  # noqa: E701
