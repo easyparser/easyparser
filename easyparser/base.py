@@ -18,3 +18,10 @@ class Snippet:
     dtype: str
     origin: Optional[Origin] = None
     metadata: dict = field(default_factory=dict)
+
+    # def save(self, path: str):
+    #     with open(path, "w") as f:
+    #         f.write(self.text)
+
+    # export
+    # methods to compose snippets to a larger file
