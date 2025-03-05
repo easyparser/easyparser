@@ -1,5 +1,5 @@
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 
 class Origin:
@@ -19,7 +19,7 @@ class Origin:
         self.location = location
 
 
-class Obj:
+class Chunk:
     """Mandatory fields for an object represented in `easyparser`.
 
     Args:
@@ -42,10 +42,10 @@ class Obj:
         mimetype: str,
         content: Any = None,
         text: str = "",
-        parent: None | str | "Obj" = None,
+        parent: None | str | "Chunk" = None,
         children: None | list = None,
-        next: None | str | "Obj" = None,
-        prev: None | str | "Obj" = None,
+        next: None | str | "Chunk" = None,
+        prev: None | str | "Chunk" = None,
         origin: None | Origin = None,
         metadata: None | dict = None,
     ):
@@ -60,22 +60,43 @@ class Obj:
         self.origin = origin
         self.metadata = metadata
 
-    def parent(self, pool=None) -> "Obj":
+    def parent(self, pool=None) -> "Chunk":
         """Get the parent object"""
         raise NotImplementedError
 
     def parent_id(self) -> str | None:
         if isinstance(self._parent, str):
             return self._parent
-        if isinstance(self._parent, Obj):
+        if isinstance(self._parent, Chunk):
             return self._parent.id
 
-    def render(self, pool=None, return_type: str = "text", executor=None):
+    def render(
+        self,
+        manager=None,
+        format: Literal["text", "markdown", "html"] = "text",
+        executor=None,
+    ):
         """Select the executor type to render the object
 
         Args:
-            pool: object pool to get the related objects
+            manager: object manager to get the related objects
             return_type: type of the return value. Defaults to "text".
             executor: executor to render the object. Defaults to None.
         """
         raise NotImplementedError
+
+
+class ChunkManager:
+    def __init__(self, objs=None):
+        self.objs = objs or {}
+
+    """The object manager that manages all the objects"""
+
+    def save(self, path):
+        """Save all objects to a directory"""
+        ...
+
+    @classmethod
+    def load(cls, path):
+        """Load all objects from a directory"""
+        ...
