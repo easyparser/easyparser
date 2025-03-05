@@ -42,10 +42,10 @@ class Obj:
         mimetype: str,
         content: Any = None,
         text: str = "",
-        parent: None | str = None,
+        parent: None | str | "Obj" = None,
         children: None | list = None,
-        next: None | str = None,
-        prev: None | str = None,
+        next: None | str | "Obj" = None,
+        prev: None | str | "Obj" = None,
         origin: None | Origin = None,
         metadata: None | dict = None,
     ):
@@ -53,9 +53,29 @@ class Obj:
         self.mimetype = mimetype
         self.content = content
         self.text = text
-        self.parent = parent
+        self._parent = parent
         self.children = children
         self.next = next
         self.prev = prev
         self.origin = origin
         self.metadata = metadata
+
+    def parent(self, pool=None) -> "Obj":
+        """Get the parent object"""
+        raise NotImplementedError
+
+    def parent_id(self) -> str | None:
+        if isinstance(self._parent, str):
+            return self._parent
+        if isinstance(self._parent, Obj):
+            return self._parent.id
+
+    def render(self, pool=None, return_type: str = "text", executor=None):
+        """Select the executor type to render the object
+
+        Args:
+            pool: object pool to get the related objects
+            return_type: type of the return value. Defaults to "text".
+            executor: executor to render the object. Defaults to None.
+        """
+        raise NotImplementedError
