@@ -1,130 +1,178 @@
-from pathlib import Path
-
-from ..base import Origin, Snippet
+from ..base import BaseOperation, Chunk, Origin
 
 
-def pdf_by_pymupdf(file_path: Path | str) -> list[Snippet]:
-    """Load a PDF file using PyMuPDF."""
-    try:
-        import pymupdf  # noqa
-    except ImportError:
-        raise ImportError("Please install `pip install pymupdf pymupdf4llm`")
+class SycamorePDF(BaseOperation):
+    """Parsing PDF using sycamore
 
-    file_path = Path(file_path)
-    document = pymupdf.open(file_path)
-    text = ""
-    for page in document:
-        text += page.get_text()
-    document.close()
+    Pros:
+        - Maintain smaller semantic elements, don't lump into text
+        - Have dedicated types for formulas, images, tables
+    Cons:
+        - Cannot specify extracting images for formulas and tables (data types that
+        are easy to misrepresented in text)
+    Need:
+    """
 
-    return [
-        Snippet(
-            id=file_path.stem,
-            text=text,
-            content=text,
-            dtype="text",
-            origin=Origin(
-                source=file_path.as_posix(),
-                location={},
-                getter="",
-                file_type="pdf",
-            ),
-            metadata={},
+    text_types = {
+        "Page-header",
+        "Section-header",
+        "Title",
+        "Caption",
+        "Page-footer",
+        "List-item",
+        "Text",
+        "Footnote",
+    }
+    image_types = {"Formula", "Image", "table", "Table"}
+
+    def __init__(self, **kwargs):
+        try:
+            import sycamore  # noqa
+        except ImportError:
+            raise ImportError("Please install `pip install sycamore`")
+        super().__init__()
+        self._default_params.update(kwargs)
+
+    @staticmethod
+    def run(
+        *chunk: Chunk,
+        use_partitioning_service: bool = False,
+        extract_table_structure: bool = True,
+        use_ocr: bool = True,
+        extract_images: bool = True,
+        **kwargs,
+    ) -> list[Chunk]:
+        """Load the PDF with Sycamore PDF extractor
+
+        Args:
+            use_partitioning_service: If true, uses Aryn partitioning service to
+                extract the text from the PDF.
+            extract_table_structure: If true, runs a separate table extraction
+                model to extract cells from regions of the document identified as
+                tables.
+            use_ocr: Whether to use OCR to extract text from the PDF. If false,
+                we will attempt to extract the text from the underlying PDF.
+            extract_images: If true, crops each region identified as an image.
+        """
+        import sycamore
+        from sycamore.transforms.partition import ArynPartitioner
+
+        partitioner = ArynPartitioner(
+            use_partitioning_service=use_partitioning_service,
+            extract_table_structure=extract_table_structure,
+            use_ocr=use_ocr,
+            extract_images=extract_images,
         )
-    ]
+        context = sycamore.init(exec_mode=sycamore.ExecMode.LOCAL)
+
+        result = []
+        for c in chunk:
+            if c.origin is None:
+                raise ValueError("Origin is not defined")
+            docset = context.read.binary(
+                paths=str(c.origin.location), binary_format="pdf"
+            ).partition(partitioner=partitioner)
+            doc = docset.take_all()[0]
+            for e in doc.elements:
+                origin = None
+                if e.bbox:
+                    origin = Origin(
+                        source_id=c.id,
+                        location={
+                            "bbox": [e.bbox.x1, e.bbox.y1, e.bbox.x2, e.bbox.y2],
+                            "page": e.properties["page_number"],
+                        },
+                    )
+
+                if e.type in SycamorePDF.text_types:
+                    mimetype = "text/plain"
+                    content = e.text_representation
+                elif e.type in SycamorePDF.image_types:
+                    mimetype = "image/png"
+                    content = e.binary_representation
+                else:
+                    raise ValueError(f"Unknown type: {e.type}")
+
+                result.append(
+                    Chunk(
+                        mimetype=mimetype,
+                        content=content,
+                        text=e.text_representation or "",
+                        origin=origin,
+                        metadata={"type": e.type, **e.properties},
+                    )
+                )
+
+        return result
 
 
-def pdf_by_pymupdf4llm(file_path) -> list[Snippet]:
-    try:
-        from pymupdf4llm.llama.pdf_markdown_reader import PDFMarkdownReader
-    except ImportError:
-        raise ImportError("Please install `pip install pymupdf4llm`")
+# def pdf_by_extractous(file_path: Path | str) -> list[Snippet]:
+#     try:
+#         from extractous import Extractor
+#     except ImportError:
+#         raise ImportError("Please install `pip install extractous`")
 
-    reader = PDFMarkdownReader()
-    outputs = reader.load_data(file_path)
-    documents = [
-        Snippet(
-            id=file_path.stem,
-            text=each.text,
-            content=each.text,
-            dtype="text",
-            origin=Origin(
-                source=file_path.as_posix(),
-                location={},
-                getter="",
-                file_type="pdf",
-            ),
-            metadata={},
-        )
-        for each in outputs
-    ]
-    return documents
-
-
-def pdf_by_extractous(file_path: Path | str) -> list[Snippet]:
-    try:
-        from extractous import Extractor
-    except ImportError:
-        raise ImportError("Please install `pip install extractous`")
-
-    file_path = Path(file_path)
-    extr = Extractor()
-    result, metadata = extr.extract_file_to_string(str(file_path))
-    return [
-        Snippet(
-            id=Path(file_path).stem,
-            text=result,
-            content=result,
-            dtype="text",
-            origin=Origin(
-                source=file_path.as_posix(),
-                location={},
-                getter="",
-                file_type="pdf",
-            ),
-            metadata=metadata,
-        )
-    ]
+#     file_path = Path(file_path)
+#     extr = Extractor()
+#     result, metadata = extr.extract_file_to_string(str(file_path))
+#     return [
+#         Snippet(
+#             id=Path(file_path).stem,
+#             text=result,
+#             content=result,
+#             dtype="text",
+#             origin=Origin(
+#                 source_id=file_path.as_posix(),
+#                 location={},
+#                 getter="",
+#                 file_type="pdf",
+#             ),
+#             metadata=metadata,
+#         )
+#     ]
 
 
-def pdf_by_unstructured(file_path: Path | str, **kwargs) -> list[Snippet]:
-    try:
-        from unstructured.partition.pdf import partition_pdf
-    except ImportError:
-        raise ImportError('Please install `pip install "unstructured[pdf]"`')
+# def pdf_by_unstructured(file_path: Path | str, **kwargs) -> list[Snippet]:
+#     try:
+#         from unstructured.partition.pdf import partition_pdf
+#     except ImportError:
+#         raise ImportError('Please install `pip install "unstructured[pdf]"`')
 
-    file_path = Path(file_path).resolve()
-    file_path_str = str(file_path)
-    if "chunking_strategy" not in kwargs:
-        kwargs["chunking_strategy"] = "basic"
-    result = partition_pdf(file_path_str, **kwargs)
+#     file_path = Path(file_path).resolve()
+#     file_path_str = str(file_path)
+#     if "chunking_strategy" not in kwargs:
+#         kwargs["chunking_strategy"] = "basic"
+#     result = partition_pdf(file_path_str, **kwargs)
 
-    output = []
-    for element in result:
-        coord = (
-            element.metadata.coordinates.to_dict()
-            if element.metadata.coordinates
-            else {}
-        )
-        output.append(
-            Snippet(
-                id=element.id,
-                text=element.text,
-                content=element.text,
-                dtype="text",
-                origin=Origin(
-                    source=file_path_str,
-                    location=coord,
-                    getter="",
-                    file_type="pdf",
-                ),
-                metadata=element.metadata.to_dict(),
-            )
-        )
-    return output
-
-
-def pdf_by_docling(file_path: Path | str, **kwargs) -> list[Snippet]: ...
+#     output = []
+#     for element in result:
+#         coord = (
+#             element.metadata.coordinates.to_dict()
+#             if element.metadata.coordinates
+#             else {}
+#         )
+#         output.append(
+#             Snippet(
+#                 id=element.id,
+#                 text=element.text,
+#                 content=element.text,
+#                 dtype="text",
+#                 origin=Origin(
+#                     source_id=file_path_str,
+#                     location=coord,
+#                     getter="",
+#                     file_type="pdf",
+#                 ),
+#                 metadata=element.metadata.to_dict(),
+#             )
+#         )
+#     return output
 
 
-def pdf_by_vlm(file_path: Path | str, **kwargs) -> list[Snippet]: ...
+# def pdf_by_docling(file_path: Path | str, **kwargs) -> list[Snippet]: ...
+
+
+# def pdf_by_sycamore(file_path: Path | str, **kwargs) -> list[Snippet]: ...
+
+
+# def pdf_by_vlm(file_path: Path | str, **kwargs) -> list[Snippet]: ...

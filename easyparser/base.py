@@ -20,7 +20,7 @@ class Origin:
 
     def __init__(
         self,
-        source_id: str,
+        source_id: str = "",
         location: Any = None,
         metadata: dict | None = None,
     ):
@@ -162,9 +162,15 @@ class BaseOperation:
         self._tool_desc: dict | None = None
         self._default_params: dict = {}
 
-    def run(self, *chunk: Chunk, **kwargs) -> list[Chunk] | Chunk:
+    @staticmethod
+    def run(*chunk: Chunk, **kwargs) -> list[Chunk] | Chunk:
         """Run the operation on the chunk"""
         raise NotImplementedError
+
+    def __call__(self, *chunk: Chunk, **kwargs) -> list[Chunk] | Chunk:
+        if self._default_params:
+            kwargs.update(self._default_params)
+        return self.run(*chunk, **kwargs)
 
     def as_tool(self) -> dict:
         """Return the necessary parameters for the operation.
