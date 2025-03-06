@@ -1,5 +1,6 @@
 import uuid
 from collections import defaultdict, deque
+from pathlib import Path
 from typing import Any, Literal
 
 
@@ -21,9 +22,11 @@ class Origin:
         self,
         source_id: str,
         location: Any = None,
+        metadata: dict | None = None,
     ):
         self.source_id = source_id
         self.location = location
+        self.metadata = metadata
 
 
 class Chunk:
@@ -61,7 +64,7 @@ class Chunk:
     ):
         self.id: str = uuid.uuid4().hex
         self.mimetype = mimetype
-        self.content = content
+        self._content = content
         self.text = text
         self._parent = parent
         self.children = children
@@ -69,10 +72,33 @@ class Chunk:
         self.prev = prev
         self.origin = origin
         self.metadata = metadata
+        self._path = None
+
+    @property
+    def content(self):
+        """Lazy loading of the content of the object"""
+        if (
+            self._content is None
+            and self._path is not None
+            and Path(self._path).exists()
+        ):
+            with open(self._path, "rb") as f:
+                self._content = f.read()
+        return self._content
+
+    @content.setter
+    def content(self, value):
+        """Set the content of the object"""
+        self._content = value
 
     def parent(self, pool=None) -> "Chunk":
         """Get the parent object"""
         raise NotImplementedError
+
+    @property
+    def manager(self):
+        """Get the active chunk manager"""
+        return get_manager()
 
     def parent_id(self) -> str | None:
         if isinstance(self._parent, str):
@@ -95,20 +121,24 @@ class Chunk:
         """
         raise NotImplementedError
 
+    def save(self, directory):
+        """Save the chunk into the directory"""
+        ...
 
-class ChunkManager:
-    def __init__(self, objs=None):
+    @classmethod
+    def load(cls, path) -> "Chunk": ...
+
+
+class ChunkGroup:
+    """An interface for a group of related chunk"""
+
+    def __init__(self, objs=None, path=None):
         self.objs = objs or {}
 
     """The object manager that manages all the objects"""
 
     def save(self, path):
         """Save all objects to a directory"""
-        ...
-
-    @classmethod
-    def load(cls, path):
-        """Load all objects from a directory"""
         ...
 
 
