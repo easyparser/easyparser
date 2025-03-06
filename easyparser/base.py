@@ -74,6 +74,12 @@ class Chunk:
         self.metadata = metadata
         self._path = None
 
+    def __str__(self):
+        text = self.text
+        if len(self.text) > 80:
+            text = f"{self.text[:50]}... ({len(self.text[50:].split())} more words)"
+        return f"Chunk(id={self.id[:5]}..., mimetype={self.mimetype}, text={text})"
+
     @property
     def content(self):
         """Lazy loading of the content of the object"""
