@@ -222,6 +222,18 @@ class Chunk:
             with open(content_path, "wb") as f:
                 f.write(self._content)
 
+    def delete(self):
+        """Delete the chunk from the directory"""
+        if self._directory is None:
+            raise ValueError("Must provide `directory`")
+        file_path = Path(self._directory) / f"{self.id}.json"
+        if file_path.exists():
+            file_path.unlink()
+        content_path = Path(self._directory) / f"{self.id}.content"
+        if content_path.exists():
+            content_path.unlink()
+        self._directory = None
+
     @classmethod
     def load(cls, path) -> "Chunk":
         """Load the chunk from a file"""
