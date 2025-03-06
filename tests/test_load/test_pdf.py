@@ -1,30 +1,13 @@
 from pathlib import Path
 
-from easyparser.load.pdf import (
-    pdf_by_extractous,
-    pdf_by_pymupdf,
-    pdf_by_pymupdf4llm,
-    pdf_by_unstructured,
-)
+from easyparser.base import Chunk, Origin
+from easyparser.load.pdf import SycamorePDF
 
-asset_dir = Path(__file__).parent.parent / "assets"
+pdf_path = str(Path(__file__).parent.parent / "assets" / "long.pdf")
 
 
-def test_unstructured():
-    _ = pdf_by_unstructured(asset_dir / "test.pdf")
-    assert True
-
-
-def test_pymupdf():
-    _ = pdf_by_pymupdf(asset_dir / "test.pdf")
-    assert True
-
-
-def test_pymupdf4llm():
-    _ = pdf_by_pymupdf4llm(asset_dir / "test.pdf")
-    assert True
-
-
-def test_extractous():
-    _ = pdf_by_extractous(asset_dir / "test.pdf")
-    assert True
+def test_sycamore():
+    original_chunk = Chunk(mimetype="file", origin=Origin(location=pdf_path))
+    chunks = SycamorePDF.run(original_chunk, use_ocr=False)
+    assert len(chunks) > 0
+    assert isinstance(chunks[0], Chunk)

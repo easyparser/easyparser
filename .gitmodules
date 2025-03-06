@@ -1,0 +1,3 @@
+[submodule "tests/assets"]
+	path = tests/assets
+	url = https://huggingface.co/datasets/easyparser/test-assets
