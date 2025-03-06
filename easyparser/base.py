@@ -31,6 +31,13 @@ class Origin:
         self.location = location
         self.metadata = metadata
 
+    def as_dict(self):
+        return {
+            "source_id": self.source_id,
+            "location": self.location,
+            "metadata": self.metadata,
+        }
+
 
 class Chunk:
     """Mandatory fields for an object represented in `easyparser`.
@@ -70,9 +77,9 @@ class Chunk:
         self._content = content
         self.text = text
         self._parent = parent
-        self.children = children
-        self.next = next
-        self.prev = prev
+        self._children = children
+        self._next = next
+        self._prev = prev
         self.origin = origin
         self.metadata = metadata
         self._path = None
@@ -104,16 +111,47 @@ class Chunk:
         """Get the parent object"""
         raise NotImplementedError
 
-    @property
-    def manager(self):
-        """Get the active chunk manager"""
-        return get_manager()
-
     def parent_id(self) -> str | None:
         if isinstance(self._parent, str):
             return self._parent
         if isinstance(self._parent, Chunk):
             return self._parent.id
+
+    def next(self, pool=None) -> "Chunk":
+        """Get the next object"""
+        raise NotImplementedError
+
+    def next_id(self) -> str | None:
+        if isinstance(self._next, str):
+            return self._next
+        if isinstance(self._next, Chunk):
+            return self._next.id
+
+    def prev(self, pool=None) -> "Chunk":
+        """Get the previous object"""
+        raise NotImplementedError
+
+    def prev_id(self) -> str | None:
+        if isinstance(self._prev, str):
+            return self._prev
+        if isinstance(self._prev, Chunk):
+            return self._prev.id
+
+    def children_ids(self) -> list[str]:
+        if self._children is None:
+            return []
+        ids = []
+        for child in self._children:
+            if isinstance(child, str):
+                ids.append(child)
+            if isinstance(child, Chunk):
+                ids.append(child.id)
+        return ids
+
+    @property
+    def manager(self):
+        """Get the active chunk manager"""
+        return get_manager()
 
     def render(
         self,
@@ -129,6 +167,19 @@ class Chunk:
             executor: executor to render the object. Defaults to None.
         """
         raise NotImplementedError
+
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "mimetype": self.mimetype,
+            "text": self.text,
+            "parent": self.parent_id(),
+            "children": self.children_ids(),
+            "next": self.next_id(),
+            "prev": self.prev_id(),
+            "origin": self.origin.as_dict() if self.origin else None,
+            "metadata": self.metadata,
+        }
 
     def save(self, directory):
         """Save the chunk into the directory"""
