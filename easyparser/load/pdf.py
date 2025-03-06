@@ -104,10 +104,15 @@ class SycamorePDF(BaseOperation):
                         mimetype=mimetype,
                         content=content,
                         text=text,
+                        parent=c,
                         origin=origin,
                         metadata={"type": e.type, **e.properties},
                     )
                 )
+
+        for idx, c in enumerate(result[1:], start=1):
+            c.prev = result[idx - 1]
+            result[idx - 1].next = c
 
         return result
 

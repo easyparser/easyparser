@@ -179,18 +179,31 @@ class Chunk:
                 ids.append(child.id)
         return ids
 
-    def render(
-        self,
-        format: Literal["text", "markdown", "html"] = "text",
-        executor=None,
-    ):
+    @property
+    def children(self) -> list["Chunk"]:
+        if self._children is None:
+            return []
+        for idx in range(len(self._children)):
+            child = self._children[idx]
+            if isinstance(child, str):
+                if not self._directory:
+                    raise ValueError("Must provide `directory` to load the children")
+                child = Chunk.load(Path(self._directory, f"{child}.json"))
+                self._children[idx] = child
+        return self._children
+
+    def render(self, format: Literal["plain", "markdown", "html"] = "plain") -> str:
         """Select the executor type to render the object
 
         Args:
-            return_type: type of the return value. Defaults to "text".
-            executor: executor to render the object. Defaults to None.
+            format: the format of the output. Defaults to "text".
         """
-        raise NotImplementedError
+        current = self.text
+        if not self.children:
+            return current
+        for child in self.children:
+            current += "\n\n" + child.render(format) + "\n\n"
+        return current
 
     def as_dict(self):
         return {
@@ -223,7 +236,10 @@ class Chunk:
                 f.write(self._content)
 
     def delete(self):
-        """Delete the chunk from the directory"""
+        """Delete the chunk from the directory
+
+        TODO: delete the relations as well
+        """
         if self._directory is None:
             raise ValueError("Must provide `directory`")
         file_path = Path(self._directory) / f"{self.id}.json"
