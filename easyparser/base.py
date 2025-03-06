@@ -1,5 +1,6 @@
 import builtins
 import inspect
+import json
 import re
 import uuid
 from collections import defaultdict, deque
@@ -82,7 +83,7 @@ class Chunk:
         self._prev = prev
         self.origin = origin
         self.metadata = metadata
-        self._path = None
+        self._directory = None
 
     def __str__(self):
         text = self.text
@@ -93,13 +94,11 @@ class Chunk:
     @property
     def content(self):
         """Lazy loading of the content of the object"""
-        if (
-            self._content is None
-            and self._path is not None
-            and Path(self._path).exists()
-        ):
-            with open(self._path, "rb") as f:
-                self._content = f.read()
+        if self._content is None and self._directory is not None:
+            content_path = Path(self._directory, f"{self.id}.content")
+            if content_path.exists():
+                with content_path.open("rb") as f:
+                    self._content = f.read()
         return self._content
 
     @content.setter
@@ -107,36 +106,68 @@ class Chunk:
         """Set the content of the object"""
         self._content = value
 
-    def parent(self, pool=None) -> "Chunk":
-        """Get the parent object"""
-        raise NotImplementedError
+    @property
+    def directory(self):
+        return self._directory
 
+    @directory.setter
+    def directory(self, value: str):
+        self._directory = value
+
+    @property
+    def parent(self) -> "Chunk | None":
+        """Get the parent object"""
+        if isinstance(self._parent, Chunk):
+            return self._parent
+        if isinstance(self._parent, str):
+            if not self._directory:
+                raise ValueError("Must provide `directory` to load the parent")
+            self._parent = Chunk.load(Path(self._directory, f"{self._parent}.json"))
+            return self._parent
+
+    @property
     def parent_id(self) -> str | None:
         if isinstance(self._parent, str):
             return self._parent
         if isinstance(self._parent, Chunk):
             return self._parent.id
 
-    def next(self, pool=None) -> "Chunk":
+    @property
+    def next(self) -> "Chunk | None":
         """Get the next object"""
-        raise NotImplementedError
+        if isinstance(self._next, Chunk):
+            return self._next
+        if isinstance(self._next, str):
+            if not self._directory:
+                raise ValueError("Must provide `directory` to load the next")
+            self._next = Chunk.load(Path(self._directory, f"{self._next}.json"))
+            return self._next
 
+    @property
     def next_id(self) -> str | None:
         if isinstance(self._next, str):
             return self._next
         if isinstance(self._next, Chunk):
             return self._next.id
 
-    def prev(self, pool=None) -> "Chunk":
+    def prev(self) -> "Chunk | None":
         """Get the previous object"""
-        raise NotImplementedError
+        if isinstance(self._prev, Chunk):
+            return self._prev
+        if isinstance(self._prev, str):
+            if not self._directory:
+                raise ValueError("Must provide `directory` to load the prev")
+            self._prev = Chunk.load(Path(self._directory, f"{self._prev}.json"))
+            return
 
+    @property
     def prev_id(self) -> str | None:
         if isinstance(self._prev, str):
             return self._prev
         if isinstance(self._prev, Chunk):
             return self._prev.id
 
+    @property
     def children_ids(self) -> list[str]:
         if self._children is None:
             return []
@@ -148,21 +179,14 @@ class Chunk:
                 ids.append(child.id)
         return ids
 
-    @property
-    def manager(self):
-        """Get the active chunk manager"""
-        return get_manager()
-
     def render(
         self,
-        group=None,
         format: Literal["text", "markdown", "html"] = "text",
         executor=None,
     ):
         """Select the executor type to render the object
 
         Args:
-            manager: object manager to get the related objects
             return_type: type of the return value. Defaults to "text".
             executor: executor to render the object. Defaults to None.
         """
@@ -173,20 +197,40 @@ class Chunk:
             "id": self.id,
             "mimetype": self.mimetype,
             "text": self.text,
-            "parent": self.parent_id(),
-            "children": self.children_ids(),
-            "next": self.next_id(),
-            "prev": self.prev_id(),
+            "parent": self.parent_id,
+            "children": self.children_ids,
+            "next": self.next_id,
+            "prev": self.prev_id,
             "origin": self.origin.as_dict() if self.origin else None,
             "metadata": self.metadata,
         }
 
-    def save(self, directory):
+    def save(self, directory: str | None = None):
         """Save the chunk into the directory"""
-        ...
+        if directory is None:
+            if self._directory:
+                directory = self._directory
+            else:
+                raise ValueError("Must provide `directory`")
+
+        file_path = Path(directory) / f"{self.id}.json"
+        with open(file_path, "w") as f:
+            json.dump(self.as_dict(), f)
+        self._directory = directory
+        if self._content is not None:
+            content_path = Path(directory) / f"{self.id}.content"
+            with open(content_path, "wb") as f:
+                f.write(self._content)
 
     @classmethod
-    def load(cls, path) -> "Chunk": ...
+    def load(cls, path) -> "Chunk":
+        """Load the chunk from a file"""
+        path = Path(path)
+        with open(path) as f:
+            data = json.load(f)
+        chunk = cls(**data)
+        chunk.directory = str(path.parent)
+        return chunk
 
 
 class ChunkGroup:
@@ -198,7 +242,9 @@ class ChunkGroup:
 
     def save(self, path):
         """Save all objects to a directory"""
-        ...
+        self._path = path
+        for obj in self.objs.values():
+            obj.save(path)
 
 
 class BaseOperation:
