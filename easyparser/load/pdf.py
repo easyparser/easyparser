@@ -42,11 +42,16 @@ class SycamorePDF(BaseOperation):
         extract_images: bool = True,
         **kwargs,
     ) -> list[Chunk]:
-        """Load the PDF with Sycamore PDF extractor
+        """Load the PDF with Sycamore PDF extractor.
+
+        This extractor parses all elements in the PDF and return them as chunks. They
+        don't lump all text into a single text chunk, but instead maintain the original
+        structure of the PDF. It also has dedicated types for formulas, images, and
+        tables.
 
         Args:
-            use_partitioning_service: If true, uses Aryn partitioning service to
-                extract the text from the PDF.
+            use_partitioning_service: If true, uses the online Aryn
+                partitioning service to extract the text from the PDF.
             extract_table_structure: If true, runs a separate table extraction
                 model to extract cells from regions of the document identified as
                 tables.
@@ -84,6 +89,7 @@ class SycamorePDF(BaseOperation):
                         },
                     )
 
+                text = e.text_representation.strip() if e.text_representation else ""
                 if e.type in SycamorePDF.text_types:
                     mimetype = "text/plain"
                     content = e.text_representation
@@ -97,7 +103,7 @@ class SycamorePDF(BaseOperation):
                     Chunk(
                         mimetype=mimetype,
                         content=content,
-                        text=e.text_representation or "",
+                        text=text,
                         origin=origin,
                         metadata={"type": e.type, **e.properties},
                     )
@@ -170,9 +176,6 @@ class SycamorePDF(BaseOperation):
 
 
 # def pdf_by_docling(file_path: Path | str, **kwargs) -> list[Snippet]: ...
-
-
-# def pdf_by_sycamore(file_path: Path | str, **kwargs) -> list[Snippet]: ...
 
 
 # def pdf_by_vlm(file_path: Path | str, **kwargs) -> list[Snippet]: ...

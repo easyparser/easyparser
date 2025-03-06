@@ -1,7 +1,10 @@
+import builtins
+import inspect
+import re
 import uuid
 from collections import defaultdict, deque
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, get_type_hints
 
 
 class Origin:
@@ -114,7 +117,7 @@ class Chunk:
 
     def render(
         self,
-        manager=None,
+        group=None,
         format: Literal["text", "markdown", "html"] = "text",
         executor=None,
     ):
@@ -140,8 +143,7 @@ class ChunkGroup:
 
     def __init__(self, objs=None, path=None):
         self.objs = objs or {}
-
-    """The object manager that manages all the objects"""
+        self._path = path
 
     def save(self, path):
         """Save all objects to a directory"""
@@ -161,34 +163,102 @@ class BaseOperation:
         - The subclass **might** implement the `.as_tool` method. If not implemented,
         the method will inspect the `.run` method's signature to get the necessary
         arguments, and inspect the `.run` method's docstring to get the description.
-
     """
 
+    _tool_desc: dict | None = None
+
     def __init__(self, *args, **kwargs):
-        self._tool_desc: dict | None = None
         self._default_params: dict = {}
 
     @staticmethod
     def run(*chunk: Chunk, **kwargs) -> list[Chunk] | Chunk:
-        """Run the operation on the chunk"""
         raise NotImplementedError
 
     def __call__(self, *chunk: Chunk, **kwargs) -> list[Chunk] | Chunk:
         if self._default_params:
-            kwargs.update(self._default_params)
+            for key, value in self._default_params.items():
+                kwargs.setdefault(key, value)
         return self.run(*chunk, **kwargs)
 
-    def as_tool(self) -> dict:
+    @classmethod
+    def as_tool(cls) -> dict:
         """Return the necessary parameters for the operation.
 
-        If not subclassed, this method will inspect the `.run` method's signature
+        If not subclassed, this method will inspect the `.run` method's signature.
+        Any non-optional argument will be considered as a required parameter. Any
+        non-Python built-in type will be ignored.
+
+        The resulting dictionary will have the following keys:
+            - name (str): name of the operation
+            - description (str): description of the operation
+            - params (dict): parameters for the operation, which will
         """
-        if self._params is None:
-            self._params = {}
-        return self._params
+        if cls._tool_desc is not None:
+            return cls._tool_desc
+
+        signature = inspect.signature(cls.run)
+        docstring = inspect.getdoc(cls.run) or ""
+
+        # parse the description from the docstring from beginning to Args
+        description = ""
+        if docstring:
+            parts = re.split(r"\n\s*Args:", docstring, 1)
+            description = parts[0].strip()
+            description = " ".join([line.strip() for line in description.split("\n")])
+
+        # parse parameter descriptions from docstring
+        param_descriptions = {}
+        if len(docstring.split("Args:")) > 1:
+            args_section = docstring.split("Args:")[1]
+            param_pattern = re.compile(
+                r"\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*?)(?=\s+[a-zA-Z_][a-zA-Z0-9_]*\s*:|$)",  # noqa: E501
+                re.DOTALL,
+            )
+            matches = param_pattern.findall(args_section)
+
+            for param_name, param_desc in matches:
+                clean_desc = re.sub(r"\s+", " ", param_desc.strip())
+                param_descriptions[param_name] = clean_desc
+
+        # get type hints
+        type_hints = get_type_hints(cls.run)
+
+        # build parameters dictionary
+        parameters = {}
+        for name, param in signature.parameters.items():
+            # skip *args, **kwargs, chunk param, and parameters without type annotations
+            if name == "kwargs" or name == "chunk" or name not in type_hints:
+                continue
+
+            # skip non-builtin types
+            type_anno = type_hints.get(name)
+            type_name = getattr(type_anno, "__name__", str(type_anno))
+            if not hasattr(builtins, type_name):
+                continue
+
+            param_info = {
+                "type": type_name,
+                "required": param.default is param.empty,
+            }
+
+            # add default value if available
+            if param.default is not param.empty:
+                param_info["default"] = param.default
+
+            # add description if available
+            if name in param_descriptions:
+                param_info["description"] = param_descriptions[name]
+
+            parameters[name] = param_info
+
+        return {
+            "name": cls.__qualname__,
+            "description": description,
+            "parameters": parameters,
+        }
 
     def default(self, **kwargs):
-        """Set default parameters for the operation"""
+        """Update the default parameters for the operation"""
         self._default_params.update(kwargs)
 
 
