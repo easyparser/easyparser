@@ -143,6 +143,13 @@ class Chunk:
             self._next = Chunk.load(Path(self._directory, f"{self._next}.json"))
             return self._next
 
+    @next.setter
+    def next(self, value):
+        if isinstance(value, (Chunk, str)):
+            self._next = value
+        else:
+            raise ValueError("`.next` must be a Chunk or a id of a chunk")
+
     @property
     def next_id(self) -> str | None:
         if isinstance(self._next, str):
@@ -150,6 +157,7 @@ class Chunk:
         if isinstance(self._next, Chunk):
             return self._next.id
 
+    @property
     def prev(self) -> "Chunk | None":
         """Get the previous object"""
         if isinstance(self._prev, Chunk):
@@ -159,6 +167,13 @@ class Chunk:
                 raise ValueError("Must provide `directory` to load the prev")
             self._prev = Chunk.load(Path(self._directory, f"{self._prev}.json"))
             return
+
+    @prev.setter
+    def prev(self, value):
+        if isinstance(value, (Chunk, str)):
+            self._prev = value
+        else:
+            raise ValueError("`.prev` must be a Chunk or a id of a chunk")
 
     @property
     def prev_id(self) -> str | None:
@@ -264,15 +279,48 @@ class Chunk:
 class ChunkGroup:
     """An interface for a group of related chunk"""
 
-    def __init__(self, objs=None, path=None):
-        self.objs = objs or {}
+    def __init__(self, chunks=[], path=None):
+        self._chunks = chunks or []
+        self._roots: None | list = None  # idx to self._chunks
         self._path = path
+
+    def __bool__(self):
+        return bool(self._chunks)
+
+    def __getitem__(self, idx):
+        return self._chunks[idx]
 
     def save(self, path):
         """Save all objects to a directory"""
         self._path = path
-        for obj in self.objs.values():
+        for obj in self._chunks:
             obj.save(path)
+
+    def roots(self):
+        """Get chunks that have no parent"""
+        if self._roots is None:
+            self._roots, result = [], []
+            for idx, chunk in enumerate(self._chunks):
+                if not chunk.parent:
+                    result.append(chunk)
+                    self._roots.append(idx)
+            return result
+
+        return [self._chunks[idx] for idx in self._roots]
+
+    def non_roots(self):
+        """Get chunks that have a parent"""
+        return [chunk for chunk in self._chunks if chunk._parent]
+
+    def leafs(self):
+        """Get chunks that have no children"""
+        return [chunk for chunk in self._chunks if not chunk._children]
+
+    def __iter__(self):
+        return iter(self._chunks)
+
+    def __len__(self):
+        return len(self._chunks)
 
 
 class BaseOperation:
@@ -290,16 +338,17 @@ class BaseOperation:
         arguments, and inspect the `.run` method's docstring to get the description.
     """
 
+    supported_mimetypes: list[str] = []
     _tool_desc: dict | None = None
 
     def __init__(self, *args, **kwargs):
         self._default_params: dict = {}
 
     @staticmethod
-    def run(*chunk: Chunk, **kwargs) -> list[Chunk] | Chunk:
+    def run(chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
         raise NotImplementedError
 
-    def __call__(self, *chunk: Chunk, **kwargs) -> list[Chunk] | Chunk:
+    def __call__(self, *chunk: Chunk, **kwargs) -> ChunkGroup:
         if self._default_params:
             for key, value in self._default_params.items():
                 kwargs.setdefault(key, value)

@@ -1,7 +1,7 @@
 import re
 from typing import Callable, Literal, Optional
 
-from ..base import Snippet
+from ..base import Chunk
 from .utils import merge_splits, split_with_regex, word_len
 
 _whitespace_pattern = re.compile(r"\s+")
@@ -48,7 +48,7 @@ def _default_separators(text):
 
 
 def chunk_by_characters(
-    text: str | Snippet,
+    text: str | Chunk,
     chunk_size: int = 4000,
     chunk_overlap: int = 200,
     length_fn: Callable[[str], int] = word_len,

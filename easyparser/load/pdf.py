@@ -1,4 +1,4 @@
-from ..base import BaseOperation, Chunk, Origin
+from ..base import BaseOperation, Chunk, ChunkGroup, Origin
 
 
 class SycamorePDF(BaseOperation):
@@ -13,6 +13,7 @@ class SycamorePDF(BaseOperation):
     Need:
     """
 
+    supported_mimetypes = ["application/pdf"]
     text_types = {
         "Page-header",
         "Section-header",
@@ -35,13 +36,13 @@ class SycamorePDF(BaseOperation):
 
     @staticmethod
     def run(
-        *chunk: Chunk,
+        chunk: Chunk | ChunkGroup,
         use_partitioning_service: bool = False,
         extract_table_structure: bool = True,
         use_ocr: bool = True,
         extract_images: bool = True,
         **kwargs,
-    ) -> list[Chunk]:
+    ) -> ChunkGroup:
         """Load the PDF with Sycamore PDF extractor.
 
         This extractor parses all elements in the PDF and return them as chunks. They
@@ -69,6 +70,9 @@ class SycamorePDF(BaseOperation):
             extract_images=extract_images,
         )
         context = sycamore.init(exec_mode=sycamore.ExecMode.LOCAL)
+
+        if isinstance(chunk, Chunk):
+            chunk = ChunkGroup(chunks=[chunk])
 
         result = []
         for c in chunk:
@@ -114,7 +118,7 @@ class SycamorePDF(BaseOperation):
             c.prev = result[idx - 1]
             result[idx - 1].next = c
 
-        return result
+        return ChunkGroup(chunks=result)
 
 
 # def pdf_by_extractous(file_path: Path | str) -> list[Snippet]:
