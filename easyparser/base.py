@@ -342,7 +342,7 @@ class BaseOperation:
     _tool_desc: dict | None = None
 
     def __init__(self, *args, **kwargs):
-        self._default_params: dict = {}
+        self._default_params = kwargs
 
     @staticmethod
     def run(chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
@@ -430,6 +430,11 @@ class BaseOperation:
             "description": description,
             "parameters": parameters,
         }
+
+    @classmethod
+    def py_dependency(cls) -> list[str]:
+        """Return the Python dependencies"""
+        return []
 
     def default(self, **kwargs):
         """Update the default parameters for the operation"""

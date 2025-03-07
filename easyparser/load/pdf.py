@@ -26,14 +26,6 @@ class SycamorePDF(BaseOperation):
     }
     image_types = {"Formula", "Image", "table", "Table"}
 
-    def __init__(self, **kwargs):
-        try:
-            import sycamore  # noqa
-        except ImportError:
-            raise ImportError("Please install `pip install sycamore`")
-        super().__init__()
-        self._default_params.update(kwargs)
-
     @staticmethod
     def run(
         chunk: Chunk | ChunkGroup,
@@ -120,6 +112,142 @@ class SycamorePDF(BaseOperation):
 
         return ChunkGroup(chunks=result)
 
+    @classmethod
+    def py_dependency(cls) -> list[str]:
+        return ["sycamore"]
+
+
+class UnstructuredPDF(BaseOperation):
+    supported_mimetypes = ["application/pdf"]
+    text_types = {
+        "Title",
+        "Text",
+        "UncategorizedText",
+        "NarrativeText",
+        "BulletedText",
+        "Paragraph",
+        "Abstract",
+        "Threading",
+        "Form",
+        "Field-Name",
+        "Value",
+        "Link",
+        "CompositeElement",
+        "FigureCaption",
+        "Caption",
+        "List",
+        "ListItem",
+        "List-item",
+        "Checked",
+        "Unchecked",
+        "CheckBoxChecked",
+        "CheckBoxUnchecked",
+        "RadioButtonChecked",
+        "RadioButtonUnchecked",
+        "Address",
+        "EmailAddress",
+        "PageBreak",
+        "Header",
+        "Headline",
+        "Subheadline",
+        "Page-header",
+        "Section-header",
+        "Footer",
+        "Footnote",
+        "Page-footer",
+        "PageNumber",
+        "CodeSnippet",
+        "FormKeysValues",
+    }
+    image_types = {
+        "Image",
+        "Picture",
+        "Figure",
+        "Formula",
+        "Table",
+    }
+
+    @staticmethod
+    def run(
+        chunk: Chunk | ChunkGroup, strategy: str = "hi_res", **kwargs
+    ) -> ChunkGroup:
+        """Parse the PDF using the unstructured partitioning service.
+
+        Args:
+            strategy: The strategy to use for partitioning the PDF. Valid
+                strategies are "hi_res", "ocr_only", and "fast". When using the
+                "hi_res" strategy, the function uses a layout detection model to
+                identify document elements. When using the "ocr_only" strategy,
+                partition_pdf simply extracts the text from the document using OCR
+                and processes it. If the "fast" strategy is used, the text is
+                extracted directly from the PDF. The default strategy `auto` will
+                determine when a page can be extracted using `fast` mode, otherwise
+                it will fall back to `hi_res`.
+        """
+        import base64
+
+        from unstructured.partition.pdf import partition_pdf
+
+        if isinstance(chunk, Chunk):
+            chunk = ChunkGroup(chunks=[chunk])
+
+        result = []
+        for c in chunk:
+            if c.origin is None:
+                raise ValueError("Origin is not defined")
+
+            file_path = c.origin.location
+            elements = partition_pdf(
+                file_path,
+                strategy=strategy,
+                extract_image_block_types=list(UnstructuredPDF.image_types),
+                extract_image_block_to_payload=True,
+                **kwargs,
+            )
+            for e in elements:
+                origin = None
+                if coord := e.metadata.coordinates:
+                    x1, y1 = coord.points[0]
+                    x2, y2 = coord.points[2]
+                    width, height = coord.system.width, coord.system.height
+                    origin = Origin(
+                        source_id=c.id,
+                        location={
+                            "bbox": [x1 / width, y1 / height, x2 / width, y2 / height],
+                            "page": e.metadata.page_number,
+                        },
+                    )
+                text = e.text
+                if e.category in UnstructuredPDF.text_types:
+                    mimetype = "text/plain"
+                    content = e.text
+                elif e.category in UnstructuredPDF.image_types:
+                    if not e.metadata.image_base64 or not e.metadata.image_mime_type:
+                        continue
+                    mimetype = e.metadata.image_mime_type
+                    content = base64.b64decode(e.metadata.image_base64)
+                else:
+                    raise ValueError(f"Unknown type: {e.category}")
+
+                result.append(
+                    Chunk(
+                        mimetype=mimetype,
+                        content=content,
+                        text=text,
+                        parent=c,
+                        origin=origin,
+                        metadata={
+                            "type": e.category,
+                            "languages": e.metadata.languages,
+                        },
+                    )
+                )
+        return ChunkGroup(chunks=result)
+
+    @classmethod
+    def py_dependency(cls) -> list[str]:
+        return ["unstructured[pdf]"]
+
 
 # def pdf_by_extractous(file_path: Path | str) -> list[Snippet]:
 #     try:
@@ -145,43 +273,6 @@ class SycamorePDF(BaseOperation):
 #             metadata=metadata,
 #         )
 #     ]
-
-
-# def pdf_by_unstructured(file_path: Path | str, **kwargs) -> list[Snippet]:
-#     try:
-#         from unstructured.partition.pdf import partition_pdf
-#     except ImportError:
-#         raise ImportError('Please install `pip install "unstructured[pdf]"`')
-
-#     file_path = Path(file_path).resolve()
-#     file_path_str = str(file_path)
-#     if "chunking_strategy" not in kwargs:
-#         kwargs["chunking_strategy"] = "basic"
-#     result = partition_pdf(file_path_str, **kwargs)
-
-#     output = []
-#     for element in result:
-#         coord = (
-#             element.metadata.coordinates.to_dict()
-#             if element.metadata.coordinates
-#             else {}
-#         )
-#         output.append(
-#             Snippet(
-#                 id=element.id,
-#                 text=element.text,
-#                 content=element.text,
-#                 dtype="text",
-#                 origin=Origin(
-#                     source_id=file_path_str,
-#                     location=coord,
-#                     getter="",
-#                     file_type="pdf",
-#                 ),
-#                 metadata=element.metadata.to_dict(),
-#             )
-#         )
-#     return output
 
 
 # def pdf_by_docling(file_path: Path | str, **kwargs) -> list[Snippet]: ...
