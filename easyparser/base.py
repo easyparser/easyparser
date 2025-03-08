@@ -207,6 +207,11 @@ class Chunk:
                 self._children[idx] = child
         return self._children
 
+    def add_child(self, child: "Chunk | str"):
+        if self._children is None:
+            self._children = []
+        self._children.append(child)
+
     def render(self, format: Literal["plain", "markdown", "html"] = "plain") -> str:
         """Select the executor type to render the object
 

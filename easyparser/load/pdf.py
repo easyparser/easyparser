@@ -249,6 +249,109 @@ class UnstructuredPDF(BaseOperation):
         return ["unstructured[pdf]"]
 
 
+class DoclingPDF(BaseOperation):
+    supported_mimetypes = ["application/pdf"]
+
+    @staticmethod
+    def run(
+        chunk: Chunk | ChunkGroup,
+        do_ocr: bool = True,
+        do_table_structure: bool = True,
+        generate_picture_images: bool = True,
+        images_scale: float = 2.0,
+        num_thread: int = 8,
+        device: str = "auto",
+        **kwargs,
+    ) -> ChunkGroup:
+        from docling.datamodel.base_models import InputFormat
+        from docling.datamodel.pipeline_options import (
+            AcceleratorOptions,
+            PdfPipelineOptions,
+        )
+        from docling.document_converter import DocumentConverter, PdfFormatOption
+        from docling_core.types.doc.document import GroupItem, PictureItem, TableItem
+
+        accelerator_options = AcceleratorOptions(num_threads=num_thread, device=device)
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.accelerator_options = accelerator_options
+        pipeline_options.do_ocr = do_ocr
+        pipeline_options.do_table_structure = do_table_structure
+        pipeline_options.generate_picture_images = generate_picture_images
+        pipeline_options.images_scale = images_scale
+
+        docling_converter = DocumentConverter(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(
+                    pipeline_options=pipeline_options,
+                )
+            }
+        )
+
+        if isinstance(chunk, Chunk):
+            chunk = ChunkGroup(chunks=[chunk])
+
+        result = []
+        for p in chunk:
+            doc = docling_converter.convert(p.origin.location).document
+            parent_chunk_stacks = []
+            last_chunk = p
+            prev_lvl = 0
+            for idx, (e, lvl) in enumerate(
+                doc.iterate_items(doc.body, with_groups=True)
+            ):
+                if isinstance(e, GroupItem):
+                    continue
+                if lvl > prev_lvl:
+                    # move down a hirearchy
+                    parent_chunk_stacks.append(last_chunk)
+                elif lvl < prev_lvl:
+                    # move up a hirearchy
+                    last_chunk = parent_chunk_stacks[-1]
+                    parent_chunk_stacks = parent_chunk_stacks[:-1]
+
+                # track the lvl
+                prev_lvl = lvl
+                if isinstance(e, PictureItem):
+                    mimetype = "image/png"
+                    content = e.image._pil.tobytes()
+                    text = e.caption_text(p)
+                elif isinstance(e, TableItem):
+                    mimetype = "text/plain"
+                    content = e.export_to_markdown()
+                    text = content
+                else:
+                    mimetype = "text/plain"
+                    content = e.text
+                    text = e.text
+
+                prov = e.prov[0]
+                page_no = prov.page_no
+                w, h = doc.pages[page_no].size.width, doc.pages[page_no].size.height
+                x1, x2 = prov.bbox.l / w, prov.bbox.r / w
+                t, b = prov.bbox.t, prov.bbox.b
+                y1, y2 = (h - t) / h, (h - b) / h
+                c = Chunk(
+                    mimetype=mimetype,
+                    content=content,
+                    text=text,
+                    parent=parent_chunk_stacks[-1],
+                    origin=Origin(
+                        source_id=p.id,
+                        location={
+                            "bbox": [x1, y1, x2, y2],
+                            "page": page_no,
+                        },
+                    ),
+                )
+                result.append(c)
+
+        return ChunkGroup(chunks=result)
+
+    @classmethod
+    def py_dependency(cls) -> list[str]:
+        return ["docling"]
+
+
 # def pdf_by_extractous(file_path: Path | str) -> list[Snippet]:
 #     try:
 #         from extractous import Extractor

@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from easyparser.base import Chunk, Origin
-from easyparser.load.pdf import SycamorePDF, UnstructuredPDF
+from easyparser.load.pdf import DoclingPDF, SycamorePDF, UnstructuredPDF
 
-pdf_path = str(Path(__file__).parent.parent / "assets" / "long.pdf")
+pdf_path = str(Path(__file__).parent.parent / "assets" / "short.pdf")
 
 
 def test_sycamore():
@@ -16,5 +16,12 @@ def test_sycamore():
 def test_unstructured():
     original_chunk = Chunk(mimetype="file", origin=Origin(location=pdf_path))
     chunks = UnstructuredPDF.run(original_chunk)
+    assert len(chunks) > 0
+    assert isinstance(chunks[0], Chunk)
+
+
+def test_docling():
+    original_chunk = Chunk(mimetype="file", origin=Origin(location=pdf_path))
+    chunks = DoclingPDF.run(original_chunk)
     assert len(chunks) > 0
     assert isinstance(chunks[0], Chunk)
