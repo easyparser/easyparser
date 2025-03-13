@@ -378,7 +378,4 @@ class DoclingPDF(BaseOperation):
 #     ]
 
 
-# def pdf_by_docling(file_path: Path | str, **kwargs) -> list[Snippet]: ...
-
-
 # def pdf_by_vlm(file_path: Path | str, **kwargs) -> list[Snippet]: ...
