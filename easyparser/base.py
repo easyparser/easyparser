@@ -252,6 +252,7 @@ class ChunkGroup:
         self._chunks = chunks or []
         self._roots: None | list = None  # idx to self._chunks
         self._path = path
+        self._store: "BaseStore | None" = None
 
     def __bool__(self):
         return bool(self._chunks)
@@ -291,6 +292,15 @@ class ChunkGroup:
         """Get chunks that have no children"""
         return [chunk for chunk in self._chunks if not chunk._children]
 
+    def attach_store(self, store):
+        self._store = store
+        for chunk in self._chunks:
+            chunk.store = store
+
+    @property
+    def store(self):
+        return self._store
+
 
 class BaseStore:
     """Base class for organizing and persisting chunk"""
@@ -310,6 +320,11 @@ class BaseStore:
     def save(self, chunk: Chunk):
         """Save the chunk to the store"""
         raise NotImplementedError
+
+    def save_group(self, group: ChunkGroup):
+        """Save the group to the store"""
+        for chunk in group:
+            self.save(chunk)
 
     def delete(self, chunk: Chunk):
         """Delete the chunk from the store"""

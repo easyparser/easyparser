@@ -168,4 +168,7 @@ class ChunkByCharacters(BaseOperation):
 
             result.extend(splitted_chunks)
 
+        if chunk.store:
+            result.attach_store(chunk.store)
+
         return result
