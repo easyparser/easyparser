@@ -328,6 +328,12 @@ class ChunkGroup:
         return len(self._chunks)
 
 
+class BaseStore:
+    """Base class for organizing and persisting chunk"""
+
+    ...
+
+
 class BaseOperation:
     """Almost all operations on Chunk should eventually subclass from this. This class
     defines the interface so that:
