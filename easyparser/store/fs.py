@@ -18,7 +18,14 @@ class FileStore(BaseStore):
         file_path = self._path / f"{id}.json"
         with open(file_path) as f:
             data = json.load(f)
+            # internal attributes
+            _history = data.pop("_history", None)
+
         chunk = Chunk(**data)
+
+        # fill the history
+        if _history:
+            chunk._history = _history
         chunk.store = self
         return chunk
 

@@ -82,6 +82,8 @@ class Chunk:
         self.origin = origin
         self.metadata = metadata
 
+        # internal use
+        self._history: list = []
         self._store: "BaseStore | None" = None
 
     def __str__(self):
@@ -101,6 +103,10 @@ class Chunk:
     def content(self, value):
         """Set the content of the object"""
         self._content = value
+
+    @property
+    def history(self) -> list:
+        return self._history
 
     @property
     def store(self):
@@ -236,6 +242,7 @@ class Chunk:
             "prev": self.prev_id,
             "origin": self.origin.as_dict() if self.origin else None,
             "metadata": self.metadata,
+            "_history": self._history,
         }
 
     def save(self):
@@ -356,11 +363,19 @@ class BaseOperation:
     def run(chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
         raise NotImplementedError
 
+    def name(self, **kwargs) -> str:
+        """Return the name of the operation to keep track in history"""
+        fn = self.__class__.__name__
+        return f"{fn}({', '.join([f'{k}={v}' for k, v in kwargs.items()])})"
+
     def __call__(self, *chunk: Chunk, **kwargs) -> ChunkGroup:
         if self._default_params:
             for key, value in self._default_params.items():
                 kwargs.setdefault(key, value)
-        return self.run(*chunk, **kwargs)
+        group = self.run(*chunk, **kwargs)
+        for chunk in group:
+            chunk.history.append(self.name(**kwargs))
+        return group
 
     @classmethod
     def as_tool(cls) -> dict:
