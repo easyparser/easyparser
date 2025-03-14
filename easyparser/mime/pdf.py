@@ -1,3 +1,6 @@
+import hashlib
+from pathlib import Path
+
 from easyparser.base import Chunk, Origin
 
 
@@ -24,10 +27,27 @@ class MimeTypePDF:
     ]
 
     @classmethod
-    def to_chunk(cls, path: str) -> Chunk:
+    def as_root_chunk(cls, path: str) -> Chunk:
         """From a pdf file to a base chunk"""
-        return Chunk(mimetype="application/pdf", origin=Origin(location=path))
+        path = str(Path(path).resolve())
+        with open(path, "rb") as f:
+            file_hash = hashlib.sha256(f.read()).hexdigest()
+        chunk = Chunk(
+            mimetype="application/pdf",
+            origin=Origin(location=path),
+            metadata={
+                "file_hash": file_hash,
+            },
+        )
+        chunk.id = f"pdf_{hashlib.sha256(path.encode()).hexdigest()}"
+        return chunk
 
     @classmethod
     def to_origin(cls, pdf_chunk, x1, x2, y1, y2, page_number) -> Origin:
-        return Origin(source_id=pdf_chunk.id)
+        return Origin(
+            source_id=pdf_chunk.id,
+            location={
+                "bbox": [x1, y1, x2, y2],
+                "page": page_number,
+            },
+        )

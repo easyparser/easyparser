@@ -1,4 +1,5 @@
-from ..base import BaseOperation, Chunk, ChunkGroup, Origin
+from easyparser.base import BaseOperation, Chunk, ChunkGroup
+from easyparser.mime.pdf import MimeTypePDF
 
 
 class SycamorePDF(BaseOperation):
@@ -77,12 +78,13 @@ class SycamorePDF(BaseOperation):
             for e in doc.elements:
                 origin = None
                 if e.bbox:
-                    origin = Origin(
-                        source_id=c.id,
-                        location={
-                            "bbox": [e.bbox.x1, e.bbox.y1, e.bbox.x2, e.bbox.y2],
-                            "page": e.properties["page_number"],
-                        },
+                    origin = MimeTypePDF.to_origin(
+                        c,
+                        e.bbox.x1,
+                        e.bbox.x2,
+                        e.bbox.y1,
+                        e.bbox.y2,
+                        e.properties["page_number"],
                     )
 
                 text = e.text_representation.strip() if e.text_representation else ""
@@ -210,12 +212,13 @@ class UnstructuredPDF(BaseOperation):
                     x1, y1 = coord.points[0]
                     x2, y2 = coord.points[2]
                     width, height = coord.system.width, coord.system.height
-                    origin = Origin(
-                        source_id=c.id,
-                        location={
-                            "bbox": [x1 / width, y1 / height, x2 / width, y2 / height],
-                            "page": e.metadata.page_number,
-                        },
+                    origin = MimeTypePDF.to_origin(
+                        c,
+                        x1 / width,
+                        x2 / width,
+                        y1 / height,
+                        y2 / height,
+                        e.metadata.page_number,
                     )
                 text = e.text
                 if e.category in UnstructuredPDF.text_types:
@@ -335,13 +338,7 @@ class DoclingPDF(BaseOperation):
                     content=content,
                     text=text,
                     parent=parent_chunk_stacks[-1],
-                    origin=Origin(
-                        source_id=p.id,
-                        location={
-                            "bbox": [x1, y1, x2, y2],
-                            "page": page_no,
-                        },
-                    ),
+                    origin=MimeTypePDF.to_origin(p, x1, x2, y1, y2, page_no),
                 )
                 result.append(c)
 
