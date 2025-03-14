@@ -1,10 +1,8 @@
 import builtins
 import inspect
-import json
 import re
 import uuid
 from collections import defaultdict, deque
-from pathlib import Path
 from typing import Any, Literal, get_type_hints
 
 
@@ -83,7 +81,8 @@ class Chunk:
         self._prev = prev
         self.origin = origin
         self.metadata = metadata
-        self._directory = None
+
+        self._store: "BaseStore | None" = None
 
     def __str__(self):
         text = self.text
@@ -94,11 +93,8 @@ class Chunk:
     @property
     def content(self):
         """Lazy loading of the content of the object"""
-        if self._content is None and self._directory is not None:
-            content_path = Path(self._directory, f"{self.id}.content")
-            if content_path.exists():
-                with content_path.open("rb") as f:
-                    self._content = f.read()
+        if self._content is None and self._store is not None:
+            self._content = self._store.fetch_content(self)
         return self._content
 
     @content.setter
@@ -107,12 +103,12 @@ class Chunk:
         self._content = value
 
     @property
-    def directory(self):
-        return self._directory
+    def store(self):
+        return self._store
 
-    @directory.setter
-    def directory(self, value: str):
-        self._directory = value
+    @store.setter
+    def store(self, value: "BaseStore"):
+        self._store = value
 
     @property
     def parent(self) -> "Chunk | None":
@@ -120,9 +116,9 @@ class Chunk:
         if isinstance(self._parent, Chunk):
             return self._parent
         if isinstance(self._parent, str):
-            if not self._directory:
-                raise ValueError("Must provide `directory` to load the parent")
-            self._parent = Chunk.load(Path(self._directory, f"{self._parent}.json"))
+            if not self._store:
+                raise ValueError("Must provide `store` to load the parent")
+            self._parent = self._store.get(self._parent)
             return self._parent
 
     @property
@@ -138,10 +134,12 @@ class Chunk:
         if isinstance(self._next, Chunk):
             return self._next
         if isinstance(self._next, str):
-            if not self._directory:
-                raise ValueError("Must provide `directory` to load the next")
-            self._next = Chunk.load(Path(self._directory, f"{self._next}.json"))
+            if not self._store:
+                raise ValueError("Must provide `store` to load the next")
+            self._next = self._store.get(self._next)
             return self._next
+        if self._next is not None:
+            raise ValueError("`.next` must be a Chunk or a id of a chunk")
 
     @next.setter
     def next(self, value):
@@ -163,10 +161,12 @@ class Chunk:
         if isinstance(self._prev, Chunk):
             return self._prev
         if isinstance(self._prev, str):
-            if not self._directory:
-                raise ValueError("Must provide `directory` to load the prev")
-            self._prev = Chunk.load(Path(self._directory, f"{self._prev}.json"))
-            return
+            if not self._store:
+                raise ValueError("Must provide `store` to load the prev")
+            self._prev = self._store.get(self._prev)
+            return self._prev
+        if self._prev is not None:
+            raise ValueError("`.prev` must be a Chunk or a id of a chunk")
 
     @prev.setter
     def prev(self, value):
@@ -201,9 +201,9 @@ class Chunk:
         for idx in range(len(self._children)):
             child = self._children[idx]
             if isinstance(child, str):
-                if not self._directory:
-                    raise ValueError("Must provide `directory` to load the children")
-                child = Chunk.load(Path(self._directory, f"{child}.json"))
+                if not self._store:
+                    raise ValueError("Must provide `store` to load the children")
+                child = self._store.get(child)
                 self._children[idx] = child
         return self._children
 
@@ -238,47 +238,11 @@ class Chunk:
             "metadata": self.metadata,
         }
 
-    def save(self, directory: str | None = None):
+    def save(self):
         """Save the chunk into the directory"""
-        if directory is None:
-            if self._directory:
-                directory = self._directory
-            else:
-                raise ValueError("Must provide `directory`")
-
-        file_path = Path(directory) / f"{self.id}.json"
-        with open(file_path, "w") as f:
-            json.dump(self.as_dict(), f)
-        self._directory = directory
-        if self._content is not None:
-            content_path = Path(directory) / f"{self.id}.content"
-            with open(content_path, "wb") as f:
-                f.write(self._content)
-
-    def delete(self):
-        """Delete the chunk from the directory
-
-        TODO: delete the relations as well
-        """
-        if self._directory is None:
-            raise ValueError("Must provide `directory`")
-        file_path = Path(self._directory) / f"{self.id}.json"
-        if file_path.exists():
-            file_path.unlink()
-        content_path = Path(self._directory) / f"{self.id}.content"
-        if content_path.exists():
-            content_path.unlink()
-        self._directory = None
-
-    @classmethod
-    def load(cls, path) -> "Chunk":
-        """Load the chunk from a file"""
-        path = Path(path)
-        with open(path) as f:
-            data = json.load(f)
-        chunk = cls(**data)
-        chunk.directory = str(path.parent)
-        return chunk
+        if self._store is None:
+            raise ValueError("Must provide `store` to save the chunk")
+        self._store.save(self)
 
 
 class ChunkGroup:
@@ -294,6 +258,12 @@ class ChunkGroup:
 
     def __getitem__(self, idx):
         return self._chunks[idx]
+
+    def __iter__(self):
+        return iter(self._chunks)
+
+    def __len__(self):
+        return len(self._chunks)
 
     def save(self, path):
         """Save all objects to a directory"""
@@ -321,17 +291,29 @@ class ChunkGroup:
         """Get chunks that have no children"""
         return [chunk for chunk in self._chunks if not chunk._children]
 
-    def __iter__(self):
-        return iter(self._chunks)
-
-    def __len__(self):
-        return len(self._chunks)
-
 
 class BaseStore:
     """Base class for organizing and persisting chunk"""
 
-    ...
+    def __contains__(self, id: str) -> bool:
+        """Check if the chunk exists in the store"""
+        raise NotImplementedError
+
+    def get(self, id: str) -> Chunk:
+        """Get the chunk by id"""
+        raise NotImplementedError
+
+    def fetch_content(self, chunk: Chunk):
+        """Fetch the content of the chunk"""
+        raise NotImplementedError
+
+    def save(self, chunk: Chunk):
+        """Save the chunk to the store"""
+        raise NotImplementedError
+
+    def delete(self, chunk: Chunk):
+        """Delete the chunk from the store"""
+        raise NotImplementedError
 
 
 class BaseOperation:
