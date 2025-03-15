@@ -54,8 +54,9 @@ class ChunkByCharacters(BaseOperation):
         "word_len": word_len,
     }
 
-    @staticmethod
+    @classmethod
     def run(
+        cls,
         chunk: Chunk | ChunkGroup,
         chunk_size: int = 4000,
         chunk_overlap: int = 200,
@@ -84,7 +85,10 @@ class ChunkByCharacters(BaseOperation):
                 f"({chunk_size}), should be smaller."
             )
 
-        separators = separators or _default_separators(chunk.text)
+        if isinstance(chunk, Chunk):
+            chunk = ChunkGroup([chunk])
+
+        separators = separators or _default_separators(chunk[0].text)
         if isinstance(length_fn, str):
             length = ChunkByCharacters._len_fns[length_fn]
         elif length_fn is None:
@@ -143,9 +147,6 @@ class ChunkByCharacters(BaseOperation):
 
             return final_chunks
 
-        if isinstance(chunk, Chunk):
-            chunk = ChunkGroup([chunk])
-
         result = ChunkGroup()
         for c in chunk:
             splitted_texts = _split_text(c.text, separators)
@@ -166,7 +167,18 @@ class ChunkByCharacters(BaseOperation):
                 for text in splitted_texts
             ]
 
-            result.extend(splitted_chunks)
+            for r in splitted_chunks:
+                for h in c.history:
+                    r.history.append(h)
+                r.history.append(
+                    cls.name(
+                        chunk_size=chunk_size,
+                        chunk_overlap=chunk_overlap,
+                        keep_separator=keep_separator,
+                        is_separator_regex=is_separator_regex,
+                    )
+                )
+                result.append(r)
 
         if chunk.store:
             result.attach_store(chunk.store)

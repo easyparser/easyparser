@@ -273,6 +273,9 @@ class ChunkGroup:
     def __len__(self):
         return len(self._chunks)
 
+    def append(self, chunk):
+        self._chunks.append(chunk)
+
     def save(self, path):
         """Save all objects to a directory"""
         self._path = path
@@ -359,23 +362,21 @@ class BaseOperation:
     def __init__(self, *args, **kwargs):
         self._default_params = kwargs
 
-    @staticmethod
-    def run(chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
+    @classmethod
+    def run(cls, chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
         raise NotImplementedError
 
-    def name(self, **kwargs) -> str:
+    @classmethod
+    def name(cls, **kwargs) -> str:
         """Return the name of the operation to keep track in history"""
-        fn = self.__class__.__name__
+        fn = cls.__name__
         return f"{fn}({', '.join([f'{k}={v}' for k, v in kwargs.items()])})"
 
     def __call__(self, *chunk: Chunk, **kwargs) -> ChunkGroup:
         if self._default_params:
             for key, value in self._default_params.items():
                 kwargs.setdefault(key, value)
-        group = self.run(*chunk, **kwargs)
-        for chunk in group:
-            chunk.history.append(self.name(**kwargs))
-        return group
+        return self.run(*chunk, **kwargs)
 
     @classmethod
     def as_tool(cls) -> dict:

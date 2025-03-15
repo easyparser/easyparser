@@ -27,8 +27,9 @@ class SycamorePDF(BaseOperation):
     }
     image_types = {"Formula", "Image", "table", "Table"}
 
-    @staticmethod
+    @classmethod
     def run(
+        cls,
         chunk: Chunk | ChunkGroup,
         use_partitioning_service: bool = False,
         extract_table_structure: bool = True,
@@ -97,16 +98,24 @@ class SycamorePDF(BaseOperation):
                 else:
                     raise ValueError(f"Unknown type: {e.type}")
 
-                result.append(
-                    Chunk(
-                        mimetype=mimetype,
-                        content=content,
-                        text=text,
-                        parent=c,
-                        origin=origin,
-                        metadata={"type": e.type, **e.properties},
+                r = Chunk(
+                    mimetype=mimetype,
+                    content=content,
+                    text=text,
+                    parent=c,
+                    origin=origin,
+                    metadata={"type": e.type, **e.properties},
+                )
+                r.history.append(
+                    cls.name(
+                        use_partitioning_service=use_partitioning_service,
+                        extract_table_structure=extract_table_structure,
+                        use_ocr=use_ocr,
+                        extract_images=extract_images,
+                        **kwargs,
                     )
                 )
+                result.append(r)
 
         for idx, c in enumerate(result[1:], start=1):
             c.prev = result[idx - 1]
@@ -169,9 +178,9 @@ class UnstructuredPDF(BaseOperation):
         "Table",
     }
 
-    @staticmethod
+    @classmethod
     def run(
-        chunk: Chunk | ChunkGroup, strategy: str = "hi_res", **kwargs
+        cls, chunk: Chunk | ChunkGroup, strategy: str = "hi_res", **kwargs
     ) -> ChunkGroup:
         """Parse the PDF using the unstructured partitioning service.
 
@@ -255,8 +264,9 @@ class UnstructuredPDF(BaseOperation):
 class DoclingPDF(BaseOperation):
     supported_mimetypes = ["application/pdf"]
 
-    @staticmethod
+    @classmethod
     def run(
+        cls,
         chunk: Chunk | ChunkGroup,
         do_ocr: bool = True,
         do_table_structure: bool = True,
@@ -316,6 +326,8 @@ class DoclingPDF(BaseOperation):
                 prev_lvl = lvl
                 if isinstance(e, PictureItem):
                     mimetype = "image/png"
+                    if e.image._pil is None:
+                        continue
                     content = e.image._pil.tobytes()
                     text = e.caption_text(p)
                 elif isinstance(e, TableItem):
@@ -340,7 +352,22 @@ class DoclingPDF(BaseOperation):
                     parent=parent_chunk_stacks[-1],
                     origin=MimeTypePDF.to_origin(p, x1, x2, y1, y2, page_no),
                 )
+                c.history.append(
+                    cls.name(
+                        do_ocr=do_ocr,
+                        do_table_structure=do_table_structure,
+                        generate_picture_images=generate_picture_images,
+                        images_scale=images_scale,
+                        num_thread=num_thread,
+                        device=device,
+                        **kwargs,
+                    )
+                )
                 result.append(c)
+
+        for idx, c in enumerate(result[1:], start=1):
+            c.prev = result[idx - 1]
+            result[idx - 1].next = c
 
         return ChunkGroup(chunks=result)
 
