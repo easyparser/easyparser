@@ -235,6 +235,7 @@ class Chunk:
         return {
             "id": self.id,
             "mimetype": self.mimetype,
+            "content": self.content,
             "text": self.text,
             "parent": self.parent_id,
             "children": self.children_ids,

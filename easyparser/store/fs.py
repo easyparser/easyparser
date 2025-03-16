@@ -1,3 +1,4 @@
+import builtins
 import json
 from pathlib import Path
 
@@ -9,6 +10,7 @@ class FileStore(BaseStore):
 
     def __init__(self, path: str | Path):
         self._path: Path = Path(path).resolve()
+        self._path.mkdir(parents=True, exist_ok=True)
 
     def __contains__(self, id):
         return (self._path / f"{id}.json").exists()
@@ -19,6 +21,7 @@ class FileStore(BaseStore):
         with open(file_path) as f:
             data = json.load(f)
             # internal attributes
+            _id = data.pop("id")
             _history = data.pop("_history", None)
 
         chunk = Chunk(**data)
@@ -27,6 +30,7 @@ class FileStore(BaseStore):
         if _history:
             chunk._history = _history
         chunk.store = self
+        chunk.id = _id
         return chunk
 
     def fetch_content(self, chunk: Chunk):
@@ -38,16 +42,20 @@ class FileStore(BaseStore):
 
     def save(self, chunk: Chunk):
         file_path = self._path / f"{chunk.id}.json"
+        chunk_dict = chunk.as_dict()
+        content = None
+        if isinstance(chunk_dict["content"], builtins.bytes):
+            content = chunk_dict.pop("content")
 
         # dump the lightweight part
         with open(file_path, "w") as f:
             json.dump(chunk.as_dict(), f)
 
         # dump the content if any
-        if chunk._content is not None:
+        if content is not None:
             content_path = self._path / f"{chunk.id}.content"
             with open(content_path, "wb") as f:
-                f.write(chunk._content)
+                f.write(content)
 
     def delete(self, chunk: Chunk):
         """Delete the chunk from the directory
