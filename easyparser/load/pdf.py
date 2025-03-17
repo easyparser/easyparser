@@ -26,6 +26,15 @@ class SycamorePDF(BaseOperation):
         "Footnote",
     }
     image_types = {"Formula", "Image", "table", "Table"}
+    _label_mapping = {
+        "Page-header": "heading",
+        "Section-header": "heading",
+        "Title": "heading",
+        "Formula": "formula",
+        "Image": "image",
+        "table": "table",
+        "Table": "table",
+    }
 
     @classmethod
     def run(
@@ -104,7 +113,9 @@ class SycamorePDF(BaseOperation):
                     text=text,
                     parent=c,
                     origin=origin,
-                    metadata={"type": e.type, **e.properties},
+                    metadata=mime_pdf.ChildMetadata(
+                        label=cls._label_mapping.get(e.type, "text"),
+                    ).as_dict(**e.properties),
                 )
                 r.history.append(
                     cls.name(
@@ -177,6 +188,24 @@ class UnstructuredPDF(BaseOperation):
         "Formula",
         "Table",
     }
+    _label_mapping = {
+        "Title": "heading",
+        "Checked": "checkbox",
+        "Unchecked": "checkbox",
+        "CheckBoxChecked": "checkbox",
+        "CheckBoxUnchecked": "checkbox",
+        "RadioButtonChecked": "checkbox",
+        "RadioButtonUnchecked": "checkbox",
+        "Header": "heading",
+        "Headline": "heading",
+        "Subheadline": "heading",
+        "Section-header": "heading",
+        "Image": "image",
+        "Picture": "image",
+        "Figure": "image",
+        "Formula": "formula",
+        "Table": "table",
+    }
 
     @classmethod
     def run(
@@ -248,10 +277,9 @@ class UnstructuredPDF(BaseOperation):
                         text=text,
                         parent=c,
                         origin=origin,
-                        metadata={
-                            "type": e.category,
-                            "languages": e.metadata.languages,
-                        },
+                        metadata=mime_pdf.ChildMetadata(
+                            label=cls._label_mapping.get(e.category, "text")
+                        ).as_dict(languages=e.metadata.languages),
                     )
                 )
         return ChunkGroup(chunks=result)

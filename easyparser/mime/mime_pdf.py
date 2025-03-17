@@ -37,8 +37,12 @@ class ChildMetadata:
 
     label: str = "text"  # one of mime_pdf.Label
 
-    def as_dict(self):
-        return asdict(self)
+    def as_dict(self, **kwargs):
+        """Convert metadata to dictionary, accept additional kwargs"""
+        d = asdict(self)
+        if kwargs:
+            d.update(kwargs)
+        return d
 
 
 def as_root_chunk(path: str) -> Chunk:
