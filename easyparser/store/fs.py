@@ -49,7 +49,7 @@ class FileStore(BaseStore):
 
         # dump the lightweight part
         with open(file_path, "w") as f:
-            json.dump(chunk.as_dict(), f)
+            json.dump(chunk_dict, f)
 
         # dump the content if any
         if content is not None:

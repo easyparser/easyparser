@@ -276,6 +276,8 @@ class DoclingPDF(BaseOperation):
         device: str = "auto",
         **kwargs,
     ) -> ChunkGroup:
+        from io import BytesIO
+
         from docling.datamodel.base_models import InputFormat
         from docling.datamodel.pipeline_options import (
             AcceleratorOptions,
@@ -326,10 +328,13 @@ class DoclingPDF(BaseOperation):
                 prev_lvl = lvl
                 if isinstance(e, PictureItem):
                     mimetype = "image/png"
-                    if e.image._pil is None:
+                    pil_image = e.get_image(doc)
+                    if pil_image is None:
                         continue
-                    content = e.image._pil.tobytes()
-                    text = e.caption_text(p)
+                    buffered = BytesIO()
+                    pil_image.save(buffered, format="PNG")
+                    content = buffered.getvalue()
+                    text = e.caption_text(doc)
                 elif isinstance(e, TableItem):
                     mimetype = "text/plain"
                     content = e.export_to_markdown()
