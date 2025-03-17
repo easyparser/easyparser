@@ -1,5 +1,5 @@
 from easyparser.base import BaseOperation, Chunk, ChunkGroup
-from easyparser.mime.pdf import MimeTypePDF
+from easyparser.mime import mime_pdf
 
 
 class SycamorePDF(BaseOperation):
@@ -79,7 +79,7 @@ class SycamorePDF(BaseOperation):
             for e in doc.elements:
                 origin = None
                 if e.bbox:
-                    origin = MimeTypePDF.to_origin(
+                    origin = mime_pdf.to_origin(
                         c,
                         e.bbox.x1,
                         e.bbox.x2,
@@ -221,7 +221,7 @@ class UnstructuredPDF(BaseOperation):
                     x1, y1 = coord.points[0]
                     x2, y2 = coord.points[2]
                     width, height = coord.system.width, coord.system.height
-                    origin = MimeTypePDF.to_origin(
+                    origin = mime_pdf.to_origin(
                         c,
                         x1 / width,
                         x2 / width,
@@ -276,6 +276,27 @@ class DoclingPDF(BaseOperation):
         device: str = "auto",
         **kwargs,
     ) -> ChunkGroup:
+        """Load the PDF with Docling PDF extractor.
+
+        This extractor parses all elements in the PDF and return them as chunks. They
+        don't lump all text into a single text chunk, but instead maintain the original
+        structure of the PDF.
+
+        It has dedicated types for formulas, images, tables and headers.
+
+        It can build hierarchical structure of the chunks based on the layout of the
+        PDF (e.g. headers, sections, subsections).
+
+        Args:
+            do_ocr: if True, perform OCR on the PDF, otherwise extract text from the
+                PDF programmatically.
+            do_table_structure: if True, extract the table structure from the PDF.
+            generate_picture_images: if True, generate images for pictures in the PDF.
+            images_scale: the scale factor for the images generated from the PDF.
+            num_thread: the number of threads to use for processing the PDF.
+            device: the device to use for processing the PDF, can be "auto", "cpu",
+                "cuda", or "mps".
+        """
         from io import BytesIO
 
         from docling.datamodel.base_models import InputFormat
@@ -355,7 +376,8 @@ class DoclingPDF(BaseOperation):
                     content=content,
                     text=text,
                     parent=parent_chunk_stacks[-1],
-                    origin=MimeTypePDF.to_origin(p, x1, x2, y1, y2, page_no),
+                    origin=mime_pdf.to_origin(p, x1, x2, y1, y2, page_no),
+                    metadata={},
                 )
                 c.history.append(
                     cls.name(
