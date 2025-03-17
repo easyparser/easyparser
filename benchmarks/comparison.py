@@ -8,7 +8,7 @@ print(f"Import unstructured {time.time() - start}")
 
 start = time.time()
 from easyparser.chunk.text import chunk_by_characters  # noqa: E402
-from easyparser.load.pdf import pdf_by_pymupdf  # noqa: E402
+from easyparser.parse.pdf import pdf_by_pymupdf  # noqa: E402
 
 print(f"Import easyparser {time.time() - start}")
 

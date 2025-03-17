@@ -282,6 +282,11 @@ class UnstructuredPDF(BaseOperation):
                         ).as_dict(languages=e.metadata.languages),
                     )
                 )
+
+        for idx, c in enumerate(result[1:], start=1):
+            c.prev = result[idx - 1]
+            result[idx - 1].next = c
+
         return ChunkGroup(chunks=result)
 
     @classmethod

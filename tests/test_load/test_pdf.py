@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from easyparser.base import Chunk
-from easyparser.load.pdf import DoclingPDF, SycamorePDF, UnstructuredPDF
 from easyparser.mime import mime_pdf
+from easyparser.parse.pdf import DoclingPDF, SycamorePDF, UnstructuredPDF
 
 pdf_path = str(Path(__file__).parent.parent / "assets" / "short.pdf")
 
