@@ -263,6 +263,25 @@ class UnstructuredPDF(BaseOperation):
 
 class DoclingPDF(BaseOperation):
     supported_mimetypes = ["application/pdf"]
+    _label_mapping = {  # taken from docling.types.doc.labels.DocItemLabel
+        "caption": "text",
+        "footnote": "text",
+        "formula": "formula",
+        "list_item": "text",
+        "page_footer": "text",
+        "page_header": "text",
+        "picture": "image",
+        "section_header": "heading",
+        "table": "table",
+        "text": "text",
+        "title": "heading",
+        "document_index": "text",
+        "code": "text",
+        "checkbox_selected": "checkbox",
+        "checkbox_unselected": "checkbox",
+        "form": "text",
+        "key_value_region": "text",
+    }
 
     @classmethod
     def run(
@@ -377,7 +396,9 @@ class DoclingPDF(BaseOperation):
                     text=text,
                     parent=parent_chunk_stacks[-1],
                     origin=mime_pdf.to_origin(p, x1, x2, y1, y2, page_no),
-                    metadata={},
+                    metadata=mime_pdf.ChildMetadata(
+                        label=cls._label_mapping.get(e.label, "text")
+                    ).as_dict(),
                 )
                 c.history.append(
                     cls.name(
