@@ -213,6 +213,12 @@ class Chunk:
                 self._children[idx] = child
         return self._children
 
+    @children.setter
+    def children(self, value):
+        if not all(isinstance(child, (Chunk, str)) for child in value):
+            raise ValueError("All children must be a Chunk or a id of a chunk")
+        self._children = value
+
     def add_child(self, child: "Chunk | str"):
         if self._children is None:
             self._children = []
@@ -374,8 +380,11 @@ class BaseStore:
 
     def save_group(self, group: ChunkGroup):
         """Save the group to the store"""
-        for chunk in group:
-            self.save(chunk)
+        for root, chunks in group.iter_groups():
+            if isinstance(root, Chunk):
+                self.save(root)
+            for chunk in chunks:
+                self.save(chunk)
 
     def delete(self, chunk: Chunk):
         """Delete the chunk from the store"""
