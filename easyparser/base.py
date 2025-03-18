@@ -70,6 +70,7 @@ class Chunk:
         prev: "None | str | Chunk" = None,
         origin: None | Origin = None,
         metadata: None | dict = None,
+        history: None | list = None,
     ):
         self.id: str = uuid.uuid4().hex
         self.mimetype = mimetype
@@ -83,7 +84,7 @@ class Chunk:
         self.metadata = metadata
 
         # internal use
-        self._history: list = []
+        self._history: list = history or []
         self._store: "BaseStore | None" = None
 
     def __str__(self):
@@ -108,6 +109,10 @@ class Chunk:
     def history(self) -> list:
         return self._history
 
+    @history.setter
+    def history(self, value: list):
+        self._history = value
+
     @property
     def store(self):
         return self._store
@@ -126,6 +131,13 @@ class Chunk:
                 raise ValueError("Must provide `store` to load the parent")
             self._parent = self._store.get(self._parent)
             return self._parent
+
+    @parent.setter
+    def parent(self, value):
+        if value is None or isinstance(value, (Chunk, str)):
+            self._parent = value
+        else:
+            raise ValueError("`.parent` must be a Chunk or a id of a chunk")
 
     @property
     def parent_id(self) -> str | None:
@@ -149,7 +161,7 @@ class Chunk:
 
     @next.setter
     def next(self, value):
-        if isinstance(value, (Chunk, str)):
+        if value is None or isinstance(value, (Chunk, str)):
             self._next = value
         else:
             raise ValueError("`.next` must be a Chunk or a id of a chunk")
@@ -176,7 +188,7 @@ class Chunk:
 
     @prev.setter
     def prev(self, value):
-        if isinstance(value, (Chunk, str)):
+        if value is None or isinstance(value, (Chunk, str)):
             self._prev = value
         else:
             raise ValueError("`.prev` must be a Chunk or a id of a chunk")
@@ -203,7 +215,7 @@ class Chunk:
 
     @child.setter
     def child(self, value):
-        if isinstance(value, (Chunk, str)):
+        if value is None or isinstance(value, (Chunk, str)):
             self._child = value
         else:
             raise ValueError("`.child` must be a Chunk or a id of a chunk")

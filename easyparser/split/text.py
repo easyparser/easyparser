@@ -1,3 +1,4 @@
+import copy
 import re
 from typing import Callable, Literal, Optional
 
@@ -147,30 +148,27 @@ class ChunkByCharacters(BaseOperation):
 
             return final_chunks
 
-        result = ChunkGroup()
-        for c in chunk:
-            splitted_texts = _split_text(c.text, separators)
-            if len(splitted_texts) == 1:
-                # nothing to split, skip
-                result.append(c)
-                continue
+        output = ChunkGroup()
+        for group_root, chunks in chunk.iter_groups():
+            result = []
+            for ch in chunks:
+                if not ch.text:
+                    result.append(ch)
+                    continue
 
-            splitted_chunks = [
-                Chunk(
-                    mimetype="text/plain",
-                    content=text,
-                    text=text,
-                    metadata=c.metadata,
-                    origin=c.origin,
-                    parent=c.parent,
-                )
-                for text in splitted_texts
-            ]
+                splitted_texts = _split_text(ch.text, separators)
+                if len(splitted_texts) == 1:
+                    # nothing to split, skip
+                    result.append(ch)
+                    continue
 
-            for r in splitted_chunks:
-                for h in c.history:
-                    r.history.append(h)
-                r.history.append(
+                # Note that the resulting chunks are split from the original chunk
+                metadata = copy.deepcopy(ch.metadata)
+                metadata["split"] = True
+
+                # Record history
+                history = copy.deepcopy(ch.history)
+                history.append(
                     cls.name(
                         chunk_size=chunk_size,
                         chunk_overlap=chunk_overlap,
@@ -178,9 +176,45 @@ class ChunkByCharacters(BaseOperation):
                         is_separator_regex=is_separator_regex,
                     )
                 )
-                result.append(r)
+
+                splitted_chunks = [
+                    Chunk(
+                        mimetype=ch.mimetype,
+                        content=ch.content,
+                        text=text,
+                        origin=ch.origin,
+                        parent=ch.parent,  # the parent will be here to fast traveling
+                        metadata=metadata,
+                        history=history,
+                    )
+                    for text in splitted_texts
+                ]
+
+                # The last chunk will inherit the child
+                splitted_chunks[-1].child = ch.child
+
+                # The first chunk will inherit the parent
+                if ch.parent:
+                    ch.parent.child = splitted_chunks[0]
+
+                # Next and prev intra chunks
+                for idx, _c in enumerate(splitted_chunks[1:], start=1):
+                    _c.prev = splitted_chunks[idx - 1]
+                    splitted_chunks[idx - 1].next = _c
+
+                # Outside next and prev
+                if ch.prev:
+                    splitted_chunks[0].prev = ch.prev
+                    ch.prev.next = splitted_chunks[0]
+                if ch.next:
+                    splitted_chunks[-1].next = ch.next
+                    ch.next.prev = splitted_chunks[-1]
+
+                result.extend(splitted_chunks)
+
+            output.add_group(ChunkGroup(root=group_root, chunks=result))
 
         if chunk.store:
-            result.attach_store(chunk.store)
+            output.attach_store(chunk.store)
 
-        return result
+        return output
