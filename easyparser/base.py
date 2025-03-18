@@ -256,61 +256,94 @@ class Chunk:
 class ChunkGroup:
     """An interface for a group of related chunk"""
 
-    def __init__(self, chunks=[], path=None):
-        self._chunks = chunks or []
-        self._roots: None | list = None  # idx to self._chunks
-        self._path = path
+    def __init__(self, chunks: list | None = None, root: Chunk | None = None):
+        self._roots: dict[str, Chunk] = {}
+
+        self._root_id = None
+        if root is not None:
+            self._roots[root.id] = root
+            self._root_id = root.id
+
+        self._chunks: dict[str | None, list] = {self._root_id: chunks or []}
         self._store: "BaseStore | None" = None
-
-    def __bool__(self):
-        return bool(self._chunks)
-
-    def __getitem__(self, idx):
-        return self._chunks[idx]
-
-    def __iter__(self):
-        return iter(self._chunks)
-
-    def __len__(self):
-        return len(self._chunks)
-
-    def append(self, chunk):
-        self._chunks.append(chunk)
-
-    def save(self, path):
-        """Save all objects to a directory"""
-        self._path = path
-        for obj in self._chunks:
-            obj.save(path)
-
-    def roots(self):
-        """Get chunks that have no parent"""
-        if self._roots is None:
-            self._roots, result = [], []
-            for idx, chunk in enumerate(self._chunks):
-                if not chunk.parent:
-                    result.append(chunk)
-                    self._roots.append(idx)
-            return result
-
-        return [self._chunks[idx] for idx in self._roots]
-
-    def non_roots(self):
-        """Get chunks that have a parent"""
-        return [chunk for chunk in self._chunks if chunk._parent]
-
-    def leafs(self):
-        """Get chunks that have no children"""
-        return [chunk for chunk in self._chunks if not chunk._children]
-
-    def attach_store(self, store):
-        self._store = store
-        for chunk in self._chunks:
-            chunk.store = store
 
     @property
     def store(self):
         return self._store
+
+    @property
+    def groups(self):
+        return self._chunks
+
+    def __bool__(self):
+        return bool(len(self))
+
+    def __getitem__(self, idx):
+        for chunks in self._chunks.values():
+            if idx < len(chunks):
+                return chunks[idx]
+            idx -= len(chunks)
+
+    def __iter__(self):
+        for chunks in self._chunks.values():
+            yield from chunks
+
+    def __len__(self):
+        count = sum(len(chunks) for chunks in self._chunks.values())
+        return count
+
+    def append(self, chunk: Chunk):
+        if len(self._chunks) > 1:
+            raise ValueError(
+                "Cannot append when ChunkGroup has multiple roots. "
+                "Please specify the root to append: "
+                "`.groups[root_id_str].append(chunk)`"
+            )
+
+        if self._root_id not in self._chunks:
+            self._root_id = list(self._chunks.keys())[0]
+
+        self._chunks[self._root_id].append(chunk)
+
+    def extend(self, chunks: list[Chunk]):
+        if len(self._chunks) > 1:
+            raise ValueError(
+                "Cannot extend when ChunkGroup has multiple roots. "
+                "Please specify the root to extend: "
+                "`.groups[root_id_str].extend(chunks)`"
+            )
+
+        if self._root_id not in self._chunks:
+            self._root_id = list(self._chunks.keys())[0]
+
+        self._chunks[self._root_id].extend(chunks)
+
+    def iter_groups(self):
+        for root_id, chunks in self._chunks.items():
+            if root_id is None:
+                yield root_id, chunks
+            else:
+                root_node = self._roots[root_id]
+                yield root_node, chunks
+
+    def add_group(self, group: "ChunkGroup"):
+        """Add another ChunkGroup to the current chunk group"""
+        for root, chunks in group.iter_groups():
+            if isinstance(root, Chunk):
+                self._roots[root.id] = root
+                root_id = root.id
+            else:
+                root_id = None
+
+            if root_id not in self._chunks:
+                self._chunks[root_id] = []
+            self._chunks[root_id].extend(chunks)
+
+    def attach_store(self, store):
+        self._store = store
+        for chunks in self._chunks.values():
+            for chunk in chunks:
+                chunk.store = store
 
 
 class BaseStore:
