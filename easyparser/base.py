@@ -51,10 +51,10 @@ class Chunk:
         content: content of the object, can be anything (text or bytes), that can be
             understood from the mimetype.
         text: text representation of the object.
-        parent: parent object id. Defaults to None.
-        children: list of children object ids. Defaults to None.
-        next: next object id. Defaults to None.
-        prev: previous object id. Defaults to None.
+        parent: parent object id. Default to None.
+        child: the first child id. Default to None.
+        next: next object id. Default to None.
+        prev: previous object id. Default to None.
         origin: the location of this object in relative to the parent.
         metadata: metadata of the object, a free-style dictionary.
     """
@@ -65,7 +65,7 @@ class Chunk:
         content: Any = None,
         text: str = "",
         parent: "None | str | Chunk" = None,
-        children: None | list = None,
+        child: "None | list | Chunk" = None,
         next: "None | str | Chunk" = None,
         prev: "None | str | Chunk" = None,
         origin: None | Origin = None,
@@ -76,7 +76,7 @@ class Chunk:
         self._content = content
         self.text = text
         self._parent = parent
-        self._children = children
+        self._child = child
         self._next = next
         self._prev = prev
         self.origin = origin
@@ -189,40 +189,31 @@ class Chunk:
             return self._prev.id
 
     @property
-    def children_ids(self) -> list[str]:
-        if self._children is None:
-            return []
-        ids = []
-        for child in self._children:
-            if isinstance(child, str):
-                ids.append(child)
-            if isinstance(child, Chunk):
-                ids.append(child.id)
-        return ids
+    def child(self) -> "Chunk | None":
+        """Get the child object"""
+        if isinstance(self._child, Chunk):
+            return self._child
+        if isinstance(self._child, str):
+            if not self._store:
+                raise ValueError("Must provide `store` to load the child")
+            self._child = self._store.get(self._child)
+            return self._child
+        if self._child is not None:
+            raise ValueError("`.child` must be a Chunk or a id of a chunk")
+
+    @child.setter
+    def child(self, value):
+        if isinstance(value, (Chunk, str)):
+            self._child = value
+        else:
+            raise ValueError("`.child` must be a Chunk or a id of a chunk")
 
     @property
-    def children(self) -> list["Chunk"]:
-        if self._children is None:
-            return []
-        for idx in range(len(self._children)):
-            child = self._children[idx]
-            if isinstance(child, str):
-                if not self._store:
-                    raise ValueError("Must provide `store` to load the children")
-                child = self._store.get(child)
-                self._children[idx] = child
-        return self._children
-
-    @children.setter
-    def children(self, value):
-        if not all(isinstance(child, (Chunk, str)) for child in value):
-            raise ValueError("All children must be a Chunk or a id of a chunk")
-        self._children = value
-
-    def add_child(self, child: "Chunk | str"):
-        if self._children is None:
-            self._children = []
-        self._children.append(child)
+    def child_id(self) -> str | None:
+        if isinstance(self._child, str):
+            return self._child
+        if isinstance(self._child, Chunk):
+            return self._child.id
 
     def render(self, format: Literal["plain", "markdown", "html"] = "plain") -> str:
         """Select the executor type to render the object
@@ -231,10 +222,12 @@ class Chunk:
             format: the format of the output. Defaults to "text".
         """
         current = self.text
-        if not self.children:
+        if not self.child:
             return current
-        for child in self.children:
-            current += "\n\n" + child.render(format) + "\n\n"
+        child = self.child
+        while child:
+            current += "\n\n" + child.render(format=format)
+            child = child.next
         return current
 
     def as_dict(self):
@@ -244,7 +237,7 @@ class Chunk:
             "content": self.content,
             "text": self.text,
             "parent": self.parent_id,
-            "children": self.children_ids,
+            "child": self.child_id,
             "next": self.next_id,
             "prev": self.prev_id,
             "origin": self.origin.as_dict() if self.origin else None,

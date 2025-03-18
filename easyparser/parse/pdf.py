@@ -133,7 +133,8 @@ class SycamorePDF(BaseOperation):
                 _c.prev = result[idx - 1]
                 result[idx - 1].next = _c
 
-            pdf_root.children = result
+            if result:
+                pdf_root.child = result[0]
             output.add_group(ChunkGroup(chunks=result, root=pdf_root))
 
         return output
@@ -292,7 +293,8 @@ class UnstructuredPDF(BaseOperation):
                 _c.prev = result[idx - 1]
                 result[idx - 1].next = _c
 
-            pdf_root.children = result
+            if result:
+                pdf_root.child = result[0]
             output.add_group(ChunkGroup(chunks=result, root=pdf_root))
 
         return output
@@ -459,7 +461,8 @@ class DoclingPDF(BaseOperation):
                 _c.prev = result[idx - 1]
                 result[idx - 1].next = _c
 
-            pdf_root.children = result
+            if result:
+                pdf_root.child = result[0]
             output.add_group(ChunkGroup(chunks=result, root=pdf_root))
 
         return output
