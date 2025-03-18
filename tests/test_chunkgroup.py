@@ -9,7 +9,9 @@ def test_construct_empty():
     assert bool(group) is False
     assert len(group) == 0
     assert group._root_id is None
-    assert None in group._chunks
+    assert (
+        None not in group._chunks
+    ), "Should not have a None key if nothing is supplied"
     assert group._roots == {}
 
 

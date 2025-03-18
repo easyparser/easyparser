@@ -258,13 +258,16 @@ class ChunkGroup:
 
     def __init__(self, chunks: list | None = None, root: Chunk | None = None):
         self._roots: dict[str, Chunk] = {}
+        self._chunks: dict[str | None, list] = {}
 
         self._root_id = None
         if root is not None:
             self._roots[root.id] = root
             self._root_id = root.id
 
-        self._chunks: dict[str | None, list] = {self._root_id: chunks or []}
+        if chunks is not None or self._root_id is not None:
+            self._chunks[self._root_id] = chunks or []
+
         self._store: "BaseStore | None" = None
 
     @property
@@ -299,6 +302,8 @@ class ChunkGroup:
                 "Please specify the root to append: "
                 "`.groups[root_id_str].append(chunk)`"
             )
+        elif len(self._chunks) == 0:
+            self._chunks[self._root_id] = []
 
         if self._root_id not in self._chunks:
             self._root_id = list(self._chunks.keys())[0]
@@ -312,6 +317,8 @@ class ChunkGroup:
                 "Please specify the root to extend: "
                 "`.groups[root_id_str].extend(chunks)`"
             )
+        elif len(self._chunks) == 0:
+            self._chunks[self._root_id] = []
 
         if self._root_id not in self._chunks:
             self._root_id = list(self._chunks.keys())[0]

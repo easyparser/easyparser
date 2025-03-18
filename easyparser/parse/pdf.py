@@ -77,19 +77,20 @@ class SycamorePDF(BaseOperation):
         if isinstance(chunk, Chunk):
             chunk = ChunkGroup(chunks=[chunk])
 
-        result = []
-        for c in chunk:
-            if c.origin is None:
+        output = ChunkGroup()
+        for pdf_root in chunk:
+            result = []
+            if pdf_root.origin is None:
                 raise ValueError("Origin is not defined")
             docset = context.read.binary(
-                paths=str(c.origin.location), binary_format="pdf"
+                paths=str(pdf_root.origin.location), binary_format="pdf"
             ).partition(partitioner=partitioner)
             doc = docset.take_all()[0]
             for e in doc.elements:
                 origin = None
                 if e.bbox:
                     origin = mime_pdf.to_origin(
-                        c,
+                        pdf_root,
                         e.bbox.x1,
                         e.bbox.x2,
                         e.bbox.y1,
@@ -111,7 +112,7 @@ class SycamorePDF(BaseOperation):
                     mimetype=mimetype,
                     content=content,
                     text=text,
-                    parent=c,
+                    parent=pdf_root,
                     origin=origin,
                     metadata=mime_pdf.ChildMetadata(
                         label=cls._label_mapping.get(e.type, "text"),
@@ -128,11 +129,13 @@ class SycamorePDF(BaseOperation):
                 )
                 result.append(r)
 
-        for idx, c in enumerate(result[1:], start=1):
-            c.prev = result[idx - 1]
-            result[idx - 1].next = c
+            for idx, _c in enumerate(result[1:], start=1):
+                _c.prev = result[idx - 1]
+                result[idx - 1].next = _c
 
-        return ChunkGroup(chunks=result)
+            output.add_group(ChunkGroup(chunks=result, root=pdf_root))
+
+        return output
 
     @classmethod
     def py_dependency(cls) -> list[str]:
@@ -231,12 +234,13 @@ class UnstructuredPDF(BaseOperation):
         if isinstance(chunk, Chunk):
             chunk = ChunkGroup(chunks=[chunk])
 
-        result = []
-        for c in chunk:
-            if c.origin is None:
+        output = ChunkGroup()
+        for pdf_root in chunk:
+            result = []
+            if pdf_root.origin is None:
                 raise ValueError("Origin is not defined")
 
-            file_path = c.origin.location
+            file_path = pdf_root.origin.location
             elements = partition_pdf(
                 file_path,
                 strategy=strategy,
@@ -251,7 +255,7 @@ class UnstructuredPDF(BaseOperation):
                     x2, y2 = coord.points[2]
                     width, height = coord.system.width, coord.system.height
                     origin = mime_pdf.to_origin(
-                        c,
+                        pdf_root,
                         x1 / width,
                         x2 / width,
                         y1 / height,
@@ -275,7 +279,7 @@ class UnstructuredPDF(BaseOperation):
                         mimetype=mimetype,
                         content=content,
                         text=text,
-                        parent=c,
+                        parent=pdf_root,
                         origin=origin,
                         metadata=mime_pdf.ChildMetadata(
                             label=cls._label_mapping.get(e.category, "text")
@@ -283,11 +287,12 @@ class UnstructuredPDF(BaseOperation):
                     )
                 )
 
-        for idx, c in enumerate(result[1:], start=1):
-            c.prev = result[idx - 1]
-            result[idx - 1].next = c
+            for idx, _c in enumerate(result[1:], start=1):
+                _c.prev = result[idx - 1]
+                result[idx - 1].next = _c
+            output.add_group(ChunkGroup(chunks=result, root=pdf_root))
 
-        return ChunkGroup(chunks=result)
+        return output
 
     @classmethod
     def py_dependency(cls) -> list[str]:
@@ -378,11 +383,12 @@ class DoclingPDF(BaseOperation):
         if isinstance(chunk, Chunk):
             chunk = ChunkGroup(chunks=[chunk])
 
-        result = []
-        for p in chunk:
-            doc = docling_converter.convert(p.origin.location).document
+        output = ChunkGroup()
+        for pdf_root in chunk:
+            result = []
+            doc = docling_converter.convert(pdf_root.origin.location).document
             parent_chunk_stacks = []
-            last_chunk = p
+            last_chunk = pdf_root
             prev_lvl = 0
             for idx, (e, lvl) in enumerate(
                 doc.iterate_items(doc.body, with_groups=True)
@@ -428,7 +434,7 @@ class DoclingPDF(BaseOperation):
                     content=content,
                     text=text,
                     parent=parent_chunk_stacks[-1],
-                    origin=mime_pdf.to_origin(p, x1, x2, y1, y2, page_no),
+                    origin=mime_pdf.to_origin(pdf_root, x1, x2, y1, y2, page_no),
                     metadata=mime_pdf.ChildMetadata(
                         label=cls._label_mapping.get(e.label, "text")
                     ).as_dict(),
@@ -446,11 +452,13 @@ class DoclingPDF(BaseOperation):
                 )
                 result.append(c)
 
-        for idx, c in enumerate(result[1:], start=1):
-            c.prev = result[idx - 1]
-            result[idx - 1].next = c
+            for idx, _c in enumerate(result[1:], start=1):
+                _c.prev = result[idx - 1]
+                result[idx - 1].next = _c
 
-        return ChunkGroup(chunks=result)
+            output.add_group(ChunkGroup(chunks=result, root=pdf_root))
+
+        return output
 
     @classmethod
     def py_dependency(cls) -> list[str]:
