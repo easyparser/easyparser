@@ -42,7 +42,7 @@ class FileStore(BaseStore):
 
     def save(self, chunk: Chunk):
         file_path = self._path / f"{chunk.id}.json"
-        chunk_dict = chunk.as_dict()
+        chunk_dict = chunk.asdict()
         content = None
         if isinstance(chunk_dict["content"], builtins.bytes):
             content = chunk_dict.pop("content")

@@ -37,7 +37,7 @@ class ChildMetadata:
 
     label: str = "text"  # one of mime_pdf.Label
 
-    def as_dict(self, **kwargs):
+    def asdict(self, **kwargs):
         """Convert metadata to dictionary, accept additional kwargs"""
         d = asdict(self)
         if kwargs:

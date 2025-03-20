@@ -116,7 +116,7 @@ class SycamorePDF(BaseOperation):
                     origin=origin,
                     metadata=mime_pdf.ChildMetadata(
                         label=cls._label_mapping.get(e.type, "text"),
-                    ).as_dict(**e.properties),
+                    ).asdict(**e.properties),
                 )
                 r.history.append(
                     cls.name(
@@ -285,7 +285,7 @@ class UnstructuredPDF(BaseOperation):
                         origin=origin,
                         metadata=mime_pdf.ChildMetadata(
                             label=cls._label_mapping.get(e.category, "text")
-                        ).as_dict(languages=e.metadata.languages),
+                        ).asdict(languages=e.metadata.languages),
                     )
                 )
 
@@ -442,7 +442,7 @@ class DoclingPDF(BaseOperation):
                     origin=mime_pdf.to_origin(pdf_root, x1, x2, y1, y2, page_no),
                     metadata=mime_pdf.ChildMetadata(
                         label=cls._label_mapping.get(e.label, "text")
-                    ).as_dict(),
+                    ).asdict(),
                 )
                 c.history.append(
                     cls.name(

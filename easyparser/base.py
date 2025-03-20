@@ -30,7 +30,7 @@ class Origin:
         self.location = location
         self.metadata = metadata
 
-    def as_dict(self):
+    def asdict(self):
         return {
             "source_id": self.source_id,
             "location": self.location,
@@ -242,7 +242,7 @@ class Chunk:
             child = child.next
         return current
 
-    def as_dict(self):
+    def asdict(self):
         return {
             "id": self.id,
             "mimetype": self.mimetype,
@@ -252,7 +252,7 @@ class Chunk:
             "child": self.child_id,
             "next": self.next_id,
             "prev": self.prev_id,
-            "origin": self.origin.as_dict() if self.origin else None,
+            "origin": self.origin.asdict() if self.origin else None,
             "metadata": self.metadata,
             "_history": self._history,
         }
