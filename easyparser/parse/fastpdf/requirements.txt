@@ -1,0 +1,3 @@
+git+https://github.com/easyparser/pdftext.git
+img2table
+Pillow

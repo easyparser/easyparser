@@ -144,6 +144,95 @@ class SycamorePDF(BaseOperation):
         return ["sycamore"]
 
 
+class FastPDF(BaseOperation):
+    """Parsing PDF using a fast and efficient parser"""
+
+    supported_mimetypes = ["application/pdf"]
+
+    @classmethod
+    def run(
+        cls, chunk: Chunk | ChunkGroup, extract_table: bool = True, **kwargs
+    ) -> ChunkGroup:
+        """Load the PDF with a fast PDF parser.
+
+        Args:
+            chunk: The input chunk to process.
+        """
+        from concurrent.futures import ProcessPoolExecutor
+
+        from .fastpdf.pdf_parser import parition_pdf
+
+        executor = ProcessPoolExecutor()
+        if isinstance(chunk, Chunk):
+            chunk = ChunkGroup(chunks=[chunk])
+
+        output = ChunkGroup()
+        for pdf_root in chunk:
+            result = []
+            if pdf_root.origin is None:
+                raise ValueError("Origin is not defined")
+
+            # call the main function to partition the PDF
+            pages = parition_pdf(
+                str(pdf_root.origin.location),
+                executor=executor,
+                extract_table=extract_table,
+            )
+
+            for page in pages:
+                page_label = page["page"]
+                for block in page["blocks"]:
+                    # only support text elements for now
+                    # TODO: add support for other types (image)
+                    mimetype = "text/plain"
+                    x1, y1, x2, y2 = block["bbox"]
+
+                    origin = mime_pdf.to_origin(
+                        pdf_root,
+                        x1,
+                        x2,
+                        y1,
+                        y2,
+                        page_label,
+                    )
+                    text = block["text"]
+                    r = Chunk(
+                        mimetype=mimetype,
+                        content=text,
+                        text=text,
+                        parent=pdf_root,
+                        origin=origin,
+                        metadata=mime_pdf.ChildMetadata(
+                            label=block["type"],
+                        ).as_dict(),
+                    )
+                    r.history.append(
+                        cls.name(
+                            extract_table=extract_table,
+                            **kwargs,
+                        )
+                    )
+                    result.append(r)
+
+            for idx, _c in enumerate(result[1:], start=1):
+                _c.prev = result[idx - 1]
+                result[idx - 1].next = _c
+
+            if result:
+                pdf_root.child = result[0]
+            output.add_group(ChunkGroup(chunks=result, root=pdf_root))
+
+        return output
+
+    @classmethod
+    def py_dependency(cls) -> list[str]:
+        return [
+            "pdftext",
+            "img2table",
+            "Pillow",
+        ]
+
+
 class UnstructuredPDF(BaseOperation):
     supported_mimetypes = ["application/pdf"]
     text_types = {

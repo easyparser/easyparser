@@ -2,7 +2,7 @@ from pathlib import Path
 
 from easyparser.base import Chunk, ChunkGroup
 from easyparser.mime import mime_pdf
-from easyparser.parse.pdf import DoclingPDF, SycamorePDF, UnstructuredPDF
+from easyparser.parse.pdf import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
 
 pdf_path1 = str(Path(__file__).parent.parent / "assets" / "short.pdf")
 pdf_path2 = str(Path(__file__).parent.parent / "assets" / "short_image.pdf")
@@ -27,6 +27,14 @@ def test_unstructured():
 def test_docling():
     root = mime_pdf.as_root_chunk(pdf_path1)
     chunks = DoclingPDF.run(root)
+    assert len(chunks) > 0
+    assert root.id in chunks.groups
+    assert isinstance(chunks[0], Chunk)
+
+
+def test_fastpdf():
+    root = mime_pdf.as_root_chunk(pdf_path1)
+    chunks = FastPDF.run(root)
     assert len(chunks) > 0
     assert root.id in chunks.groups
     assert isinstance(chunks[0], Chunk)
