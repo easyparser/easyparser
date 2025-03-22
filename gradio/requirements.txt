@@ -1,3 +1,8 @@
+gradio
+gradio-pdf
+sycamore-ai[local-inference]
+unstructured[pdf]
+docling
 git+https://github.com/easyparser/pdftext.git
 img2table
 Pillow

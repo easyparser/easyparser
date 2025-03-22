@@ -137,7 +137,7 @@ def parsed_pdf_to_markdown(
                 block_text = block_text.rstrip()
                 page_md += block_text + "\n\n"
 
-                is_header_block = all(line["md"]["bold"] for line in block["lines"])
+                is_heading_block = all(line["md"]["bold"] for line in block["lines"])
                 median_font_size = np.max(
                     np.round(
                         [
@@ -147,15 +147,17 @@ def parsed_pdf_to_markdown(
                         ]
                     )
                 ).astype(int)
-                is_header_block = is_header_block and median_font_size >= mode_font_size
-                if is_header_block:
+                is_heading_block = (
+                    is_heading_block and median_font_size >= mode_font_size
+                )
+                if is_heading_block:
                     block_text = f"### {block_text}"
 
                 output_blocks.append(
                     {
                         "text": block_text,
-                        "bbox": scale_bbox(block["bbox"], page_h, page_w),
-                        "type": "header" if is_header_block else "text",
+                        "bbox": scale_bbox(block["bbox"], page_w, page_h),
+                        "type": "heading" if is_heading_block else "text",
                     }
                 )
 
@@ -173,7 +175,7 @@ def parsed_pdf_to_markdown(
 
 def parition_pdf(
     doc_path: Path,
-    executor: ProcessPoolExecutor,
+    executor: ProcessPoolExecutor | None,
     extract_table=False,
 ) -> str:
     """Convert any document to GitHub Flavored Markdown."""

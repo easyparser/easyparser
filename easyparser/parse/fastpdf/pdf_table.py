@@ -40,13 +40,18 @@ def check_valid_table(table, col_thres=0.3):
     ) and (row_count > 2)
 
 
-def img2table_get_tables(path: str, executor: ProcessPoolExecutor):
+def img2table_get_tables(path: str, executor: ProcessPoolExecutor | None):
     # Extract tables from document
     doc = PDF(path)
     ocr = PdfOCR()
 
-    futures = [executor.submit(detect_tables_single_page, img) for img in doc.images]
-    detected_tables = [f.result() for f in futures]
+    if executor is None:
+        detected_tables = [detect_tables_single_page(img) for img in doc.images]
+    else:
+        futures = [
+            executor.submit(detect_tables_single_page, img) for img in doc.images
+        ]
+        detected_tables = [f.result() for f in futures]
 
     tables = {idx: table_list for idx, table_list in enumerate(detected_tables)}
     tables = doc.get_table_content(
@@ -55,7 +60,7 @@ def img2table_get_tables(path: str, executor: ProcessPoolExecutor):
 
     output_tables = {}
     for page_idx, page_tables in tables.items():
-        page_image_w, page_image_h = doc.images[page_idx].shape[:2]
+        page_image_h, page_image_w = doc.images[page_idx].shape[:2]
         output_tables[page_idx] = [
             {
                 "text": table.html,
