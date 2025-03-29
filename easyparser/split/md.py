@@ -316,9 +316,7 @@ class MarkdownSplitByHeading(BaseOperation):
 
 class MarkdownTOC(BaseOperation):
     @classmethod
-    def run(
-        cls, chunk: Chunk | ChunkGroup, min_chunk_size: int = -1, **kwargs
-    ) -> ChunkGroup:
+    def run(cls, chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
         """Chunk the markdown text by the headings. Construct the TOC along the way.
 
         The chunking is done by splitting the text at the headings, ensure that each
@@ -334,3 +332,6 @@ class MarkdownAnnotateTable(BaseOperation): ...
 
 
 class MarkdownAnnotateCodeBlock(BaseOperation): ...
+
+
+class MardownSummarizeSection(BaseOperation): ...
