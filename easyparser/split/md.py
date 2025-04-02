@@ -311,7 +311,7 @@ class MarkdownSplitByHeading(BaseOperation):
 
     @classmethod
     def py_dependency(cls) -> list[str]:
-        return ["py-tree-sitter", "tree-sitter-markdown"]
+        return ["tree-sitter", "tree-sitter-markdown"]
 
 
 class MarkdownTOC(BaseOperation):

@@ -6,8 +6,13 @@ pip install ...
 
 ## Features
 
-- Correct.
-    - Correctly parsing. Maintain sectional layout structure. Sections are first class citizen. Note that, due to the complexity and variety of how structures can be represented in different file types, there can be errors. `easyparser` treats this as best effort. Refer xxx for cases where determining can be difficult.
+- Maintain sectional layout structure during parsing and chunking (*).
+- Supported formats (refer ... for suitable parsers for each format):
+    - Text: html, md, txt, epub
+    - Office documents: pdf, docx
+    - Images: jpg, png
+    - Audio: coming soon
+    - Video: coming soon
 - Fast.
     - At least 100MB/s parsing
     - At least 100MB/s splitting
@@ -24,6 +29,8 @@ pip install ...
 - Complete.
     - All common file types
     - All chunking strategies
+
+(*) Due to the complexity and variety of how structures can be represented in different file types, there can be errors. `easyparser` treats this as best effort. Refer xxx for difficult cases. File an issue if you encounter a problem.
 
 ## Cookbook
 

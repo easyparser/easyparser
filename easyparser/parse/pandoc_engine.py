@@ -358,6 +358,9 @@ def process_blocks(blocks: list[dict]) -> Chunk:
             - 'other_attributes': Other Pandoc attributes
     """
     chunk = Chunk(mimetype="text/plain", ctype=CType.Para, content="")
+    if not blocks:
+        return chunk
+
     chunks = []
     for block in blocks:
         block_result = process_block(block)
@@ -471,6 +474,8 @@ def process_block(block: dict) -> Chunk:
         return parse_figure(block)
     elif block_type == "Table":
         return parse_table(block)
+    elif block_type == "HorizontalRule":
+        return Chunk(mimetype="text/plain", ctype=CType.Para, content="-----\n")
     else:
         raise NotImplementedError(f"Unknown pandoc block type: {block_type}")
 
