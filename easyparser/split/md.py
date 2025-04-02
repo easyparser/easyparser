@@ -195,9 +195,9 @@ class MarkdownSplitByHeading(BaseOperation):
             ts_root = tree.root_node
 
             # Get chunk header range
-            stack, h_start, h_end, level = [ts_root], [], {}, []
+            stack, h_start, h_end, level = [(ts_root, 0)], [], {}, []
             while stack:
-                ts_node = stack.pop()
+                ts_node, current_level = stack.pop()
                 if "heading" in ts_node.type:
                     lvl = None
                     for child in ts_node.children:
@@ -227,7 +227,7 @@ class MarkdownSplitByHeading(BaseOperation):
 
                 for i in range(ts_node.child_count - 1, -1, -1):
                     if child := ts_node.children[i]:
-                        stack.append(child)
+                        stack.append((child, current_level + 1))
 
             if len(h_start) < 2:
                 # 1 or 0 heading, so nothing to split

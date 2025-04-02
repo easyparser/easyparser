@@ -8,11 +8,14 @@ pip install ...
 
 - Maintain sectional layout structure during parsing and chunking (*).
 - Supported formats (refer ... for suitable parsers for each format):
-    - Text: html, md, txt, epub
-    - Office documents: pdf, docx
-    - Images: jpg, png
-    - Audio: coming soon
-    - Video: coming soon
+    - Text: html, md, txt, epub, latex, org, rtf, rst
+    - Office documents: pdf, docx (coming soon: pptx, xlsx)
+    - Images: (coming soon: jpg, png)
+    - Audio: (coming soon: wav, mp3)
+    - Video: (coming soon: mp4)
+    - Code: ipynb, (coming soon: py, js)
+    - Data interchange: (coming soon: csv, json, yaml, toml)
+- Content linking across files.
 - Fast.
     - At least 100MB/s parsing
     - At least 100MB/s splitting
