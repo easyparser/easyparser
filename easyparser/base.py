@@ -1,9 +1,12 @@
 import builtins
 import inspect
+import logging
 import re
 import uuid
 from collections import defaultdict, deque
-from typing import Any, Literal, get_type_hints
+from typing import Any, Callable, Literal, get_type_hints
+
+logger = logging.getLogger(__name__)
 
 
 class Origin:
@@ -38,6 +41,22 @@ class Origin:
         }
 
 
+class CType:
+    """Represent a chunk type"""
+
+    # Chunk with this type will be interpreted as the same level with the parent chunk
+    # (e.g. long text)
+    Inline = "inline"
+
+    # Chunk with this type will be interpreted as the child of the parent chunk
+    Para = "para"
+    List = "list"
+    Table = "table"
+    Header = "header"
+    Figure = "figure"
+    Code = "code"
+
+
 class Chunk:
     """Mandatory fields for an object represented in `easyparser`.
 
@@ -48,9 +67,12 @@ class Chunk:
         mimetype: mimetype of the object, plays a crucial role in determining how an
             object is processed and rendered. The official list of mimetypes:
             https://www.iana.org/assignments/media-types/media-types.xhtml
+        ctype: the chunk type of object, 1 of CType enum.
         content: content of the object, can be anything (text or bytes), that can be
             understood from the mimetype.
         text: text representation of the object.
+        summary: text summary of the object, used as short description in case the
+            content is large.
         parent: parent object id. Default to None.
         child: the first child id. Default to None.
         next: next object id. Default to None.
@@ -62,8 +84,10 @@ class Chunk:
     def __init__(
         self,
         mimetype: str,
+        ctype: CType | str = CType.Inline,
         content: Any = None,
         text: str = "",
+        summary: str = "",
         parent: "None | str | Chunk" = None,
         child: "None | list | Chunk" = None,
         next: "None | str | Chunk" = None,
@@ -74,8 +98,10 @@ class Chunk:
     ):
         self.id: str = uuid.uuid4().hex
         self.mimetype = mimetype
+        self.ctype = ctype
         self._content = content
         self.text = text
+        self.summary = summary
         self._parent = parent
         self._child = child
         self._next = next
@@ -91,7 +117,14 @@ class Chunk:
         text = self.text
         if len(self.text) > 80:
             text = f"{self.text[:50]}... ({len(self.text[50:].split())} more words)"
-        return f"Chunk(id={self.id[:5]}..., mimetype={self.mimetype}, text={text})"
+        text = text.replace("\n", " ")
+        return (
+            self.__class__.__name__
+            + f"(ctype={self.ctype}, mimetype=...{self.mimetype[-5:]}, text={text})"
+        )
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def content(self):
@@ -221,6 +254,14 @@ class Chunk:
             raise ValueError("`.child` must be a Chunk or a id of a chunk")
 
     @property
+    def last_child(self) -> "Chunk | None":
+        """Get the last child object"""
+        child = self.child
+        while child and child.next:
+            child = child.next
+        return child
+
+    @property
     def child_id(self) -> str | None:
         if isinstance(self._child, str):
             return self._child
@@ -262,6 +303,55 @@ class Chunk:
         if self._store is None:
             raise ValueError("Must provide `store` to save the chunk")
         self._store.save(self)
+
+    def merge(self, chunk: "Chunk"):
+        """Merge the content, metadata, and child of other chunk to this chunk
+
+        Args:
+            chunk: the other chunk to merge with this chunk
+        """
+        if self.mimetype != chunk.mimetype:
+            raise ValueError("Cannot merge chunk with different mimetype")
+
+        # Add the content
+        self.content += chunk.content
+        self.text += chunk.text
+        self.summary += chunk.summary
+
+        # Add the metadata
+        if self.metadata is None and chunk.metadata is not None:
+            self.metadata = chunk.metadata
+        elif self.metadata is not None and chunk.metadata is not None:
+            for key, value in chunk.metadata.items():
+                if key in self.metadata:
+                    self.metadata[key] += value
+                else:
+                    self.metadata[key] = value
+
+        # Child
+        our_last_child = self.last_child
+        their_child = chunk.child
+        if our_last_child and their_child:
+            our_last_child.next = their_child
+            their_child.prev = our_last_child
+            their_child.parent = self
+        elif their_child:
+            self.child = their_child
+            their_child.parent = self
+
+    def apply(self, fn: Callable[["Chunk", int], None], depth: int = 0):
+        """Apply a function to the chunk and all its children"""
+        fn(self, depth)
+        child = self.child
+        while child:
+            child.apply(fn, depth=depth + 1)
+            child = child.next
+
+    def print_graph(self):
+        def print_node(node, depth=0):
+            print("    " * depth, node)
+
+        self.apply(print_node)
 
 
 class ChunkGroup:

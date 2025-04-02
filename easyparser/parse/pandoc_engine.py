@@ -1,56 +1,62 @@
 import json
 import logging
-import subprocess
 import tempfile
-import textwrap
 from pathlib import Path
 from typing import Generator
 
-from easyparser.base import BaseOperation, Chunk, ChunkGroup
+try:
+    import pypandoc
+except ImportError:
+    pass
+
+from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+from easyparser.mime.guess import guess_mimetype
 
 logger = logging.getLogger(__name__)
 
 
 _BLOCK_ELEMENTS = {
-    "Plain",
-    "Para",
-    "CodeBlock",
     "BlockQuote",
-    "OrderedList",
     "BulletList",
+    "CodeBlock",
     "DefinitionList",
+    "Div",
+    "Figure",
     "Header",
     "HorizontalRule",
-    # "Table",
-    "Div",
+    "LineBlock",
     "Null",
+    "OrderedList",
+    "Para",
+    "Plain",
+    "RawBlock",
+    "Table",
 }
 
 _INLINE_ELEMENTS = {
-    "Str",
-    "Space",
-    "SoftBreak",
-    "LineBreak",
-    "Emph",
-    "Strong",
-    "Strikeout",
-    "Superscript",
-    "Subscript",
-    "SmallCaps",
-    "Quoted",
     "Cite",
     "Code",
-    "Space",
-    "Math",
-    "RawInline",
-    "Link",
+    "Emph",
     "Image",
+    "LineBreak",
+    "Link",
+    "Math",
     "Note",
+    "Quoted",
+    "RawInline",
+    "SmallCaps",
+    "SoftBreak",
+    "Space",
     "Span",
+    "Str",
+    "Strikeout",
+    "Strong",
+    "Superscript",
+    "Subscript",
 }
 
 
-def parse_ordered_list(ordered_list_node: dict) -> dict:
+def parse_ordered_list(ordered_list_node: dict) -> Chunk:
     """Parse a Pandoc OrderedList node from JSON AST to a dictionary
 
     Args:
@@ -66,8 +72,7 @@ def parse_ordered_list(ordered_list_node: dict) -> dict:
             - 'citations': List of citations
             - 'other_attributes': Other Pandoc attributes
     """
-    result = {
-        "text": "",
+    metadata = {
         "references": [],
         "images": [],
         "formatting": [],
@@ -81,14 +86,17 @@ def parse_ordered_list(ordered_list_node: dict) -> dict:
     start_number = list_attrs[0]
     list_style = list_attrs[1]
     list_delimiter = list_attrs[2]
-    result["other_attributes"].append(
+    metadata["other_attributes"].append(
         {
-            "type": "list_attributes",
+            "type": CType.List,
             "start": start_number,
             "style": list_style,
             "delimiter": list_delimiter,
         }
     )
+
+    chunk = Chunk(mimetype="text/plain", ctype=CType.List, metadata=metadata)
+    prev_chunk = None
 
     items = ordered_list_node["c"][1]
     for idx, item in enumerate(items):
@@ -97,63 +105,66 @@ def parse_ordered_list(ordered_list_node: dict) -> dict:
         marker = _generate_list_marker(item_number, list_style, list_delimiter)
 
         # Process the item content
-        item_result = process_blocks(item)
+        list_item = process_blocks(item)
+        list_item.ctype = CType.List
         if marker:
-            item_result["text"] = marker + item_result["text"]
+            list_item.content = marker + list_item.content
 
-        if idx < len(items) - 1:
-            item_result["text"] += "\n"
+        list_item.text = list_item.content
 
-        result["text"] += item_result["text"]
-        result["references"].extend(item_result["references"])
-        result["images"].extend(item_result["images"])
-        result["formatting"].extend(item_result["formatting"])
-        result["links"].extend(item_result["links"])
-        result["citations"].extend(item_result["citations"])
-        result["other_attributes"].extend(item_result["other_attributes"])
+        if idx == 0:
+            chunk.child = list_item
 
-    return result
+        if prev_chunk:
+            prev_chunk.next = list_item
+            list_item.prev = prev_chunk
+
+        list_item.parent = chunk
+        prev_chunk = list_item
+
+    return chunk
 
 
-def parse_bullet_list(bullet_list_node: dict) -> dict:
+def parse_bullet_list(bullet_list_node: dict) -> Chunk:
     """Parse a BulletList node, similar to OrderedList but with bullet markers."""
-    result = {
-        "text": "",
+    metadata = {
         "references": [],
         "images": [],
         "formatting": [],
         "links": [],
         "citations": [],
-        "other_attributes": [],
+        "other_attributes": [{"type": "list_type", "value": "bullet"}],
     }
+    chunk = Chunk(mimetype="text/plain", ctype=CType.List, metadata=metadata)
+    prev_chunk = None
 
     # Add list type to other_attributes
-    result["other_attributes"].append({"type": "list_type", "value": "bullet"})
     items = bullet_list_node["c"]
 
     for idx, item in enumerate(items):
-        item_result = process_blocks(item)
-        item_result["text"] = "• " + item_result["text"]
-        if idx < len(items) - 1:
-            item_result["text"] += "\n"
+        list_item = process_blocks(item)
+        list_item.ctype = CType.List
+        list_item.content = "• " + list_item.content
+        list_item.text = "• " + list_item.text
 
-        result["text"] += item_result["text"]
-        result["references"].extend(item_result["references"])
-        result["images"].extend(item_result["images"])
-        result["formatting"].extend(item_result["formatting"])
-        result["links"].extend(item_result["links"])
-        result["citations"].extend(item_result["citations"])
-        result["other_attributes"].extend(item_result["other_attributes"])
+        if idx == 0:
+            chunk.child = list_item
 
-    return result
+        if prev_chunk:
+            prev_chunk.next = list_item
+            list_item.prev = prev_chunk
+
+        list_item.parent = chunk
+        prev_chunk = list_item
+
+    return chunk
 
 
-def parse_header(header_node):
-    """
-    Convert a Pandoc header node from JSON AST into a structured dictionary.
+def parse_header(header_node) -> Chunk:
+    """Convert a Pandoc header node from JSON AST into a structured dictionary
 
     Args:
-        header_node (dict): A Pandoc AST header node in Pandoc format
+        header_node: a Pandoc AST header node in Pandoc format
 
     Returns:
         A dictionary containing parsed content with the following keys:
@@ -167,9 +178,39 @@ def parse_header(header_node):
             - 'citations': List of citations
             - 'other_attributes': Other Pandoc attributes
     """
-    result = {
-        "type": "header",
-        "level": 1,
+    metadata = {"level": 1}
+    header_data = header_node["c"]
+
+    # The first element is the header level (1, 2, 3, etc.)
+    if len(header_data) > 0 and isinstance(header_data[0], int):
+        metadata["level"] = header_data[0]
+
+    # The second element is the attributes array [id, classes, key-value pairs]
+    if len(header_data) > 1 and isinstance(header_data[1], list):
+        attr = header_data[1]
+        if len(attr) > 0:
+            metadata["id"] = attr[0]
+        if len(attr) > 1:
+            metadata["classes"] = attr[1]
+        if len(attr) > 2:
+            for k, v in attr[2]:
+                metadata[str(k)] = v
+
+    # The third element is the content array
+    chunk = process_inlines(header_data[2])
+    chunk.mimetype = "text/plain"
+    chunk.ctype = CType.Header
+    if chunk.metadata is None:
+        chunk.metadata = metadata
+    else:
+        chunk.metadata.update(metadata)
+
+    return chunk
+
+
+def parse_figure(figure_node: dict) -> Chunk:
+    """Parse a Pandoc Figure node from JSON AST to Chunk"""
+    metadata = {
         "text": "",
         "references": [],
         "images": [],
@@ -179,34 +220,47 @@ def parse_header(header_node):
         "other_attributes": [],
     }
 
-    header_data = header_node["c"]
+    # Extract attributes, caption, and content
+    attrs, caption, figure_content = figure_node["c"]
+    chunk = process_blocks(figure_content)
+    chunk.ctype = CType.Figure
+    chunk.metadata = metadata
 
-    # The first element is the header level (1, 2, 3, etc.)
-    if len(header_data) > 0 and isinstance(header_data[0], int):
-        result["level"] = header_data[0]
+    # Process attributes
+    attr_id, classes, key_values = attrs
+    if attr_id:
+        metadata["other_attributes"].append({"id": attr_id})
 
-    # The second element is the attributes array [id, classes, key-value pairs]
-    if len(header_data) > 1 and isinstance(header_data[1], list):
-        attr = header_data[1]
-        if len(attr) > 0:
-            result["id"] = attr[0]
-        if len(attr) > 1:
-            result["classes"] = attr[1]
-        if len(attr) > 2:
-            result["key_value_attributes"] = attr[2]
+    for cls in classes:
+        metadata["formatting"].append({"class": cls})
 
-    # The third element is the content array
-    if len(header_data) > 2 and isinstance(header_data[2], list):
-        item_result = process_inlines(header_data[2])
-        result["text"] = item_result["text"]
-        result["references"].extend(item_result["references"])
-        result["images"].extend(item_result["images"])
-        result["formatting"].extend(item_result["formatting"])
-        result["links"].extend(item_result["links"])
-        result["citations"].extend(item_result["citations"])
-        result["other_attributes"].extend(item_result["other_attributes"])
+    for key, value in key_values:
+        metadata["other_attributes"].append({key: value})
 
-    return result
+    # Process caption
+    if caption and caption[1]:
+        caption_chunk = process_blocks(caption[1])
+        caption_chunk.parent = chunk
+        chunk.child = caption_chunk
+
+    return chunk
+
+
+def parse_table(table_node: dict) -> Chunk:
+    """Parse table node into Chunk"""
+    # Due to complexity of table, convert to markdown for now
+    santinel = pypandoc.convert_text("", to="json", format="markdown")
+    santinel = json.loads(santinel)
+    santinel["blocks"] = [table_node]
+    table_markdown = pypandoc.convert_text(
+        json.dumps(santinel), to="markdown", format="json"
+    )
+    return Chunk(
+        mimetype="text/plain",
+        ctype=CType.Table,
+        content=table_markdown,
+        text=table_markdown,
+    )
 
 
 def _generate_list_marker(number, style, delimiter) -> str:
@@ -278,19 +332,16 @@ def _to_alpha(num):
     return result
 
 
-def process_pandoc(blocks: list[dict]) -> Generator[dict, None, list[dict]]:
+def process_pandoc(blocks: list[dict]) -> Generator[Chunk, None, None]:
     """Parse a Pandoc JSON block AST file into a structured dictionary"""
-    result = []
     for idx, bl in enumerate(blocks):
         if bl["t"] in _BLOCK_ELEMENTS:
             yield process_block(bl)
         else:
             raise NotImplementedError(f"Block type {bl['t']} at {idx} not implemented.")
 
-    return result
 
-
-def process_blocks(blocks: list[dict]) -> dict:
+def process_blocks(blocks: list[dict]) -> Chunk:
     """Condense a list of blocks from Pandoc AST into single object
 
     Args:
@@ -306,38 +357,32 @@ def process_blocks(blocks: list[dict]) -> dict:
             - 'citations': List of citations
             - 'other_attributes': Other Pandoc attributes
     """
-    result = {
-        "text": "",
-        "references": [],
-        "images": [],
-        "formatting": [],
-        "links": [],
-        "citations": [],
-        "other_attributes": [],
-    }
-
-    for idx, block in enumerate(blocks):
+    chunk = Chunk(mimetype="text/plain", ctype=CType.Para, content="")
+    chunks = []
+    for block in blocks:
         block_result = process_block(block)
+        chunks.append(block_result)
 
-        # Append block text and metadata
-        result["text"] += block_result["text"]
-        result["references"].extend(block_result["references"])
-        result["images"].extend(block_result["images"])
-        result["formatting"].extend(block_result["formatting"])
-        result["links"].extend(block_result["links"])
-        result["citations"].extend(block_result["citations"])
-        result["other_attributes"].extend(block_result["other_attributes"])
+    if not chunk:
+        return chunk
+    if len(chunks) == 1:
+        return chunks[0]
 
-        # Add a space between blocks
-        if not result["text"].endswith("\n") and idx < len(blocks) - 1:
-            result["text"] += "\n"
+    prev_chunk = chunks[0]
+    prev_chunk.parent = chunk
+    chunk.child = prev_chunk
+    for ch in chunks[1:]:
+        prev_chunk.next = ch
+        ch.prev = prev_chunk
+        prev_chunk = ch
+        ch.parent = chunk
 
-    return result
+    return chunk
 
 
-def process_block(block: dict) -> dict:
+def process_block(block: dict) -> Chunk:
     """Process a single block-level Pandoc AST element"""
-    result = {
+    metadata = {
         "text": "",
         "references": [],
         "images": [],
@@ -350,59 +395,87 @@ def process_block(block: dict) -> dict:
     block_type = block.get("t")
     content = block.get("c", [])
 
-    if block_type == "Plain" or block_type == "Para":
-        inline_result = process_inlines(content)
+    if block_type == "Plain":
+        return process_inlines(content)
+    elif block_type == "Para":
+        chunk = process_inlines(content)
+        chunk.ctype = CType.Para
+        return chunk
     elif block_type == "Header":
         return parse_header(block)
-    elif block_type == "OrderedList":
-        inline_result = parse_ordered_list(block)
-        inline_result["text"] = textwrap.indent(inline_result["text"], "  ")
-    elif block_type == "BulletList":
-        inline_result = parse_bullet_list(block)
-        inline_result["text"] = textwrap.indent(inline_result["text"], "  ")
+    elif block_type == "OrderedList" or block_type == "BulletList":
+        if block_type == "OrderedList":
+            inline_result = parse_ordered_list(block)
+        else:
+            inline_result = parse_bullet_list(block)
+        text = ""
+        child = inline_result.child
+        while child:
+            text += child.text + "\n"
+            child = child.next
+        inline_result.text = text.strip()
+        return inline_result
     elif block_type == "BlockQuote":
-        inline_result = process_blocks(content)
-        inline_result["formatting"].append(
-            {"type": "block_quote", "start": 0, "end": len(inline_result["text"])}
+        return process_blocks(content)
+    elif block_type == "RawBlock":
+        attrs = content[0]
+        raw_content = content[1]
+        metadata = {
+            "type": "raw_block",
+            "format": attrs,
+            "start": 0,
+            "end": len(raw_content),
+        }
+
+        return Chunk(
+            mimetype="text/plain",
+            ctype="__pandoc__rawblock__",
+            content=raw_content,
+            text=raw_content,
+            metadata=metadata,
         )
+    elif block_type == "Div":
+        attrs = content[0]
+        chunk = process_blocks(content[1])
+        chunk.ctype = "Para"
+        return chunk
     elif block_type == "CodeBlock":
         attrs = content[0]
-        code = content[1]
 
-        result["text"] = code
-        result["formatting"].append(
+        chunk = Chunk(
+            mimetype="text/plain",
+            ctype=CType.Code,
+            content=content[1],
+            text=content[1],
+        )
+
+        metadata["formatting"].append(
             {
                 "type": "code_block",
-                "start": 0,
-                "end": len(code),
                 "language": attrs[1][0] if len(attrs[1]) > 0 else "",
             }
         )
 
         if attrs[0]:
-            result["other_attributes"].append({"type": "identifier", "value": attrs[0]})
+            metadata["other_attributes"].append(
+                {"type": "identifier", "value": attrs[0]}
+            )
         if attrs[2]:
             for attr in attrs[2]:
-                result["other_attributes"].append(
+                metadata["other_attributes"].append(
                     {"type": "attribute", "key": attr[0], "value": attr[1]}
                 )
-        return result
+        chunk.metadata = metadata
+        return chunk
+    elif block_type == "Figure":
+        return parse_figure(block)
+    elif block_type == "Table":
+        return parse_table(block)
     else:
-        logger.warning(f"Unknown pandoc block type: {block_type}")
-        return result
-
-    result["text"] = inline_result["text"]
-    result["references"] = inline_result["references"]
-    result["images"] = inline_result["images"]
-    result["formatting"] = inline_result["formatting"]
-    result["links"] = inline_result["links"]
-    result["citations"] = inline_result["citations"]
-    result["other_attributes"] = inline_result["other_attributes"]
-
-    return result
+        raise NotImplementedError(f"Unknown pandoc block type: {block_type}")
 
 
-def process_inlines(inlines: list[dict]) -> dict:
+def process_inlines(inlines: list[dict]) -> Chunk:
     """Condense a list of inline elements from Pandoc AST into single object
 
     Args:
@@ -411,8 +484,7 @@ def process_inlines(inlines: list[dict]) -> dict:
     Returns:
         dict: A dictionary with text and metadata
     """
-    result = {
-        "text": "",
+    metadata = {
         "references": [],
         "images": [],
         "formatting": [],
@@ -420,171 +492,132 @@ def process_inlines(inlines: list[dict]) -> dict:
         "citations": [],
         "other_attributes": [],
     }
-
+    chunk = Chunk(
+        mimetype="text/plain", ctype=CType.Inline, content="", metadata=metadata
+    )
     for inline in inlines:
         if not isinstance(inline, dict):
             logger.warning(f"Unknown pandoc inline type: {type(inline)}. Expect dict.")
             continue
 
         inline_type = inline.get("t")
-        start_pos = len(result["text"])
+        start_pos = len(chunk.content)
         content = inline.get("c", [])
 
         if inline_type == "Str":
-            result["text"] += content
+            chunk.content += content
+            chunk.text += content
         elif inline_type == "Space":
-            result["text"] += " "
+            chunk.content += " "
+            chunk.text += " "
         elif inline_type == "SoftBreak":
-            result["text"] += " "
+            chunk.content += " "
+            chunk.text += " "
         elif inline_type == "LineBreak":
-            result["text"] += "\n"
+            chunk.content += "\n"
+            chunk.text += "\n"
         elif (
             inline_type == "Emph"
             or inline_type == "Strong"
             or inline_type == "Underline"
         ):
-            nested = process_inlines(content)
-            result["text"] += nested["text"]
-            result["formatting"].append(
+            nested_chunk = process_inlines(content)
+            chunk.merge(nested_chunk)
+            if chunk.metadata is None:
+                chunk.metadata = {"formatting": []}
+            chunk.metadata["formatting"].append(
                 {
                     "type": inline_type,
-                    "start": start_pos,
-                    "end": start_pos + len(nested["text"]),
+                    "position": start_pos,
+                    "end_position": len(chunk.content),
                 }
             )
-            result["references"].extend(nested["references"])
-            result["images"].extend(nested["images"])
-            result["formatting"].extend(nested["formatting"])
-            result["links"].extend(nested["links"])
-            result["citations"].extend(nested["citations"])
-            result["other_attributes"].extend(nested["other_attributes"])
         elif inline_type == "Link":
-            # Link with format [attr, [content], [url, title]]
-            attrs = content[0]
-            link_content = content[1]
-            target = content[2]
+            nested = process_inlines(content[1])
+            chunk.merge(nested)
 
-            link_url = target[0]
-            link_title = target[1]
-
-            # Process link text
-            nested = process_inlines(link_content)
-            result["text"] += nested["text"]
-
-            # Add link metadata
-            result["links"].append(
+            if chunk.metadata is None:
+                chunk.metadata = {"links": [], "other_attributes": []}
+            chunk.metadata["links"].append(
                 {
-                    "text": nested["text"],
-                    "url": link_url,
-                    "title": link_title,
+                    "text": nested.content,
+                    "url": content[2][0],
+                    "title": content[2][1],
                     "start": start_pos,
-                    "end": start_pos + len(nested["text"]),
+                    "end": len(chunk.content),
                 }
             )
 
-            # Copy other metadata
-            result["references"].extend(nested["references"])
-            result["images"].extend(nested["images"])
-            result["formatting"].extend(nested["formatting"])
-            result["links"].extend(nested["links"])
-            result["citations"].extend(nested["citations"])
-            result["other_attributes"].extend(nested["other_attributes"])
-
-            # Add identifier and attributes if present
-            if attrs:
+            if attrs := content[0]:
                 if attrs[0]:  # Identifier
-                    result["other_attributes"].append(
+                    chunk.metadata["other_attributes"].append(
                         {"type": "identifier", "value": attrs[0]}
                     )
                 if attrs[1]:  # Classes
-                    result["other_attributes"].append(
+                    chunk.metadata["other_attributes"].append(
                         {"type": "classes", "value": attrs[1]}
                     )
                 if attrs[2]:  # Key-value attributes
                     for attr in attrs[2]:
-                        result["other_attributes"].append(
+                        chunk.metadata["other_attributes"].append(
                             {"type": "attribute", "key": attr[0], "value": attr[1]}
                         )
         elif inline_type == "Note":
-            note_content = process_blocks(content)
-            result["text"] += f" [Note: {note_content['text']}]"
-            result["references"].extend(note_content["references"])
-            result["images"].extend(note_content["images"])
-            result["formatting"].extend(note_content["formatting"])
-            result["links"].extend(note_content["links"])
-            result["citations"].extend(note_content["citations"])
-            result["other_attributes"].extend(note_content["other_attributes"])
+            nested = process_blocks(content)
+            nested.content = f"[Note: {nested.content}]"
+            chunk.merge(nested)
         elif inline_type == "Image":
-            # Image with format [attr, [alt text content], [url, title]]
             attrs = content[0]
-            alt_content = content[1]
-            target = content[2]
+            nested = process_inlines(content[1])
 
-            image_url = target[0]
-            image_title = target[1]
+            chunk.content += f"[Image: {nested.content}]"
+            chunk.text += f"[Image: {nested.text}]"
+            nested.summary = nested.content
+            nested.metadata = {
+                "url": content[2][0],
+                "title": content[2][1],
+                "start_position": start_pos,
+                "end_position": len(chunk.content),
+                "other_attributes": {},
+            }
 
-            # Process alt text
-            nested = process_inlines(alt_content)
-            alt_text = nested["text"]
+            if Path(content[2][0]).exists():
+                # If the file exists locally, load the file
+                nested.mimetype = guess_mimetype(content[2][0])
+                with open(content[2][0], "rb") as f:
+                    nested.content = f.read()
 
-            # Add image placeholder to text
-            result["text"] += f"[Image: {alt_text}]"
+            if attrs[0]:
+                nested.metadata["other_attributes"]["identifier"] = attrs[0]
+            if attrs[1]:
+                nested.metadata["other_attributes"]["classes"] = attrs[1]
+            if attrs[2]:
+                for attr in attrs[2]:
+                    nested.metadata["other_attributes"][str(attr[0])] = attr[1]
 
-            # Add image metadata
-            result["images"].append(
-                {
-                    "alt_text": alt_text,
-                    "url": image_url,
-                    "title": image_title,
-                    "position": start_pos,
-                }
-            )
-
-            # Add identifier and attributes if present
-            if attrs:
-                if attrs[0]:  # Identifier
-                    result["other_attributes"].append(
-                        {
-                            "type": "identifier",
-                            "value": attrs[0],
-                            "element_type": "image",
-                            "element_position": start_pos,
-                        }
-                    )
-                if attrs[1]:  # Classes
-                    result["other_attributes"].append(
-                        {
-                            "type": "classes",
-                            "value": attrs[1],
-                            "element_type": "image",
-                            "element_position": start_pos,
-                        }
-                    )
-                if attrs[2]:  # Key-value attributes
-                    for attr in attrs[2]:
-                        result["other_attributes"].append(
-                            {
-                                "type": "attribute",
-                                "key": attr[0],
-                                "value": attr[1],
-                                "element_type": "image",
-                                "element_position": start_pos,
-                            }
-                        )
+            nested.parent = chunk
+            if chunk.child is None:
+                chunk.child = nested
+            else:
+                last_child = chunk.child
+                while last_child.next:
+                    last_child = last_child.next
+                last_child.next = nested
+                nested.prev = last_child
         elif inline_type == "Code":
-            # Inline code with format [attr, code]
             attrs = content[0]
             code_text = content[1]
 
-            result["text"] += code_text
-            result["formatting"].append(
+            chunk.content += code_text
+            chunk.text += code_text
+            chunk.metadata["formatting"].append(
                 {"type": "code", "start": start_pos, "end": start_pos + len(code_text)}
             )
 
             # Add identifier and attributes if present
             if attrs:
                 if attrs[0]:  # Identifier
-                    result["other_attributes"].append(
+                    chunk.metadta["other_attributes"].append(
                         {
                             "type": "identifier",
                             "value": attrs[0],
@@ -593,7 +626,7 @@ def process_inlines(inlines: list[dict]) -> dict:
                         }
                     )
                 if attrs[1]:  # Classes
-                    result["other_attributes"].append(
+                    chunk.metadata["other_attributes"].append(
                         {
                             "type": "classes",
                             "value": attrs[1],
@@ -603,7 +636,7 @@ def process_inlines(inlines: list[dict]) -> dict:
                     )
                 if attrs[2]:  # Key-value attributes
                     for attr in attrs[2]:
-                        result["other_attributes"].append(
+                        chunk.metadata["other_attributes"].append(
                             {
                                 "type": "attribute",
                                 "key": attr[0],
@@ -614,33 +647,27 @@ def process_inlines(inlines: list[dict]) -> dict:
                         )
         elif inline_type == "Cite":
             citations = content[0]
-            cite_content = content[1]
+            nested = process_inlines(content[1])
+            chunk.merge(nested)
 
-            # Process citation text
-            nested = process_inlines(cite_content)
-            result["text"] += nested["text"]
-
-            # Add citation metadata
             for citation in citations:
                 if isinstance(citation, dict):
                     cite_data = {
                         "start": start_pos,
-                        "end": start_pos + len(nested["text"]),
+                        "end": start_pos + len(chunk.content),
                     }
 
                     # Extract citation fields
                     if "citationId" in citation:
                         cite_data["id"] = citation["citationId"]
                     if "citationPrefix" in citation:
-                        prefix_text = process_inlines(citation["citationPrefix"])[
-                            "text"
-                        ]
-                        cite_data["prefix"] = prefix_text
+                        cite_data["prefix"] = process_inlines(
+                            citation["citationPrefix"]
+                        ).content
                     if "citationSuffix" in citation:
-                        suffix_text = process_inlines(citation["citationSuffix"])[
-                            "text"
-                        ]
-                        cite_data["suffix"] = suffix_text
+                        cite_data["suffix"] = process_inlines(
+                            citation["citationSuffix"]
+                        ).content
                     if "citationMode" in citation:
                         cite_data["mode"] = citation["citationMode"]
                     if "citationNoteNum" in citation:
@@ -648,105 +675,69 @@ def process_inlines(inlines: list[dict]) -> dict:
                     if "citationHash" in citation:
                         cite_data["hash"] = citation["citationHash"]
 
-                    result["citations"].append(cite_data)
-
-            # Copy other metadata
-            result["references"].extend(nested["references"])
-            result["images"].extend(nested["images"])
-            result["formatting"].extend(nested["formatting"])
-            result["links"].extend(nested["links"])
-            result["citations"].extend(nested["citations"])
-            result["other_attributes"].extend(nested["other_attributes"])
+                    chunk.metadata["citations"].append(cite_data)
         elif inline_type == "Quoted":
-            # Quoted text with format [quote_type, content]
             quote_type = content[0]["t"] if isinstance(content[0], dict) else content[0]
-            quote_content = content[1]
+            open_mark, close_mark = '"', '"'
+            if quote_type == "SingleQuote":
+                open_mark, close_mark = "'", "'"
 
-            # Get quote marks based on type
-            if quote_type == "DoubleQuote":
-                open_mark, close_mark = '"', '"'
-            elif quote_type == "SingleQuote":
-                open_mark, close_mark = """, """
-            else:
-                open_mark, close_mark = '"', '"'  # Default to double quotes
-
-            # Process quoted content
-            nested = process_inlines(quote_content)
-            result["text"] += open_mark + nested["text"] + close_mark
-
-            # Add quote formatting
-            result["formatting"].append(
-                {
-                    "type": "quote",
-                    "quote_type": quote_type,
-                    "start": start_pos,
-                    "end": start_pos
-                    + len(nested["text"])
-                    + len(open_mark)
-                    + len(close_mark),
-                }
-            )
-
-            # Copy other metadata
-            result["references"].extend(nested["references"])
-            result["images"].extend(nested["images"])
-            result["formatting"].extend(nested["formatting"])
-            result["links"].extend(nested["links"])
-            result["citations"].extend(nested["citations"])
-            result["other_attributes"].extend(nested["other_attributes"])
+            nested = process_inlines(content[1])
+            nested.content += open_mark + nested.content + close_mark
+            nested.text = open_mark + nested.text + close_mark
+            chunk.merge(nested)
         elif inline_type == "RawInline":
-            # Raw inline content with format [format, content]
             format_type = content[0]
             raw_content = content[1]
 
             # Add raw content to text
-            result["text"] += raw_content
+            chunk.content += raw_content
+            chunk.text += raw_content
 
             # Track raw content
-            result["formatting"].append(
+            chunk.metadata["formatting"].append(
                 {
                     "type": "raw",
                     "format": format_type,
                     "start": start_pos,
-                    "end": start_pos + len(raw_content),
+                    "end": start_pos + len(chunk.content),
                 }
             )
         elif inline_type == "Math":
-            # Math content with format [math_type, content]
             math_type = content[0]["t"] if isinstance(content[0], dict) else content[0]
             math_content = content[1]
 
             # Format based on math type
             if math_type == "InlineMath":
-                result["text"] += f"${math_content}$"
+                math_content += f"${math_content}$"
             elif math_type == "DisplayMath":
-                result["text"] += f"$${math_content}$$"
-            else:
-                result["text"] += math_content
+                math_content = f"$${math_content}$$"
+
+            chunk.text += math_content
+            chunk.content += math_content
 
             # Track math formatting
-            result["formatting"].append(
+            chunk.metadata["formatting"].append(
                 {
                     "type": "math",
                     "math_type": math_type,
                     "start": start_pos,
-                    "end": start_pos + len(result["text"]) - start_pos,
+                    "end": start_pos + len(chunk.content),
                 }
             )
         elif inline_type == "Span":
-            # Span with format [attr, content]
             attrs = content[0]
             span_content = content[1]
 
             # Process span content
             nested = process_inlines(span_content)
-            result["text"] += nested["text"]
+            chunk.merge(nested)
 
             # Track span formatting
             span_attr = {
                 "type": "span",
                 "start": start_pos,
-                "end": start_pos + len(nested["text"]),
+                "end": start_pos + len(chunk.content),
             }
 
             # Add identifier and attributes
@@ -757,35 +748,26 @@ def process_inlines(inlines: list[dict]) -> dict:
             if attrs[2]:  # Key-value attributes
                 span_attr["attributes"] = {k: v for k, v in attrs[2]}
 
-            result["formatting"].append(span_attr)
-
-            # Copy other metadata
-            result["references"].extend(nested["references"])
-            result["images"].extend(nested["images"])
-            result["formatting"].extend(nested["formatting"])
-            result["links"].extend(nested["links"])
-            result["citations"].extend(nested["citations"])
-            result["other_attributes"].extend(nested["other_attributes"])
+            if chunk.metadata is None:
+                chunk.metadata = {"formatting": []}
+            chunk.metadata["formatting"].append(span_attr)
         elif inline_type == "Superscript" or inline_type == "Subscript":
             nested = process_inlines(content)
-            result["text"] += nested["text"]
-            result["formatting"].append(
+            chunk.merge(nested)
+            chunk.metadata["formatting"].append(
                 {
                     "type": inline_type.lower(),
                     "start": start_pos,
-                    "end": start_pos + len(nested["text"]),
+                    "end": start_pos + len(chunk.content),
                 }
             )
-            result["references"].extend(nested["references"])
-            result["images"].extend(nested["images"])
-            result["formatting"].extend(nested["formatting"])
-            result["links"].extend(nested["links"])
-            result["citations"].extend(nested["citations"])
-            result["other_attributes"].extend(nested["other_attributes"])
         else:
             logger.warning(f"Unknown pandoc inline node: {inline_type}")
 
-    return result
+    if isinstance(chunk.content, str) and not chunk.text:
+        chunk.text = chunk.content
+
+    return chunk
 
 
 class PandocEngine(BaseOperation):
@@ -802,25 +784,56 @@ class PandocEngine(BaseOperation):
 
         output = ChunkGroup()
         for root in chunk:
-            result = []
             fp = root.origin.location
 
-            temp_dir = tempfile.TemporaryDirectory(prefix="easyparser_")
-            ast = str(Path(temp_dir.name) / "output.json")
-            media = str(Path(temp_dir.name) / "media")
-            subprocess.run(
-                ["pandoc", "-t", "json", "--extract-media", media, fp, "-o", ast],
-                check=True,
+            media = tempfile.TemporaryDirectory(prefix="chunking_pandoc_media")
+            json_string = pypandoc.convert_file(
+                fp, to="json", extra_args=["--extract-media", media.name], sandbox=True
             )
-            with open(ast) as f:
-                data = json.load(f)
-                bls = data["blocks"]
+            data = json.loads(json_string)
+            bls = data["blocks"]
 
-            for element in process_pandoc(bls):
-                # @TODO: Convert to our structure
-                result.append(element)
+            parent_chunk_stacks = [root]
+            last_chunk = None
 
-            output.add_group(ChunkGroup(chunks=result, root=root))
-            temp_dir.cleanup()
+            for ch in process_pandoc(bls):
+
+                ch.parent = parent_chunk_stacks[-1]
+                if ch.parent.child is None:
+                    ch.parent.child = ch
+
+                if ch.ctype == CType.Header:
+                    lvl = ch.metadata["level"]
+                    if lvl > parent_chunk_stacks[-1].metadata.get("level", 0):
+                        # Go deeper
+                        if (
+                            last_chunk is not None
+                            and last_chunk.id != parent_chunk_stacks[-1].id
+                        ):
+                            last_chunk.next = ch
+                            ch.prev = last_chunk
+                        parent_chunk_stacks.append(ch)
+                    else:  # Go back to sibling of parent
+                        while parent_chunk_stacks[-1].metadata.get("level", 0) >= lvl:
+                            prev_sibling = parent_chunk_stacks.pop()
+                        parent_chunk_stacks.append(ch)
+                        prev_sibling.next = ch
+                        ch.prev = prev_sibling
+
+                    last_chunk = None
+                    continue
+
+                if last_chunk:
+                    last_chunk.next = ch
+                    ch.prev = last_chunk
+
+                last_chunk = ch
+
+            output.add_group(ChunkGroup(root=root))
+            media.cleanup()
 
         return output
+
+    @classmethod
+    def py_dependency(cls) -> list[str]:
+        return ["pypandoc"]

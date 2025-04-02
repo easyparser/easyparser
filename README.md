@@ -7,7 +7,7 @@ pip install ...
 ## Features
 
 - Correct.
-    - Correctly parsing. Maintain sectional layout structure.
+    - Correctly parsing. Maintain sectional layout structure. Sections are first class citizen. Note that, due to the complexity and variety of how structures can be represented in different file types, there can be errors. `easyparser` treats this as best effort. Refer xxx for cases where determining can be difficult.
 - Fast.
     - At least 100MB/s parsing
     - At least 100MB/s splitting

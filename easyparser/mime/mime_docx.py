@@ -1,7 +1,7 @@
 import hashlib
 from pathlib import Path
 
-from easyparser.base import Chunk, Origin
+from easyparser.base import Chunk, CType, Origin
 
 
 def as_root_chunk(path: str) -> Chunk:
@@ -13,6 +13,7 @@ def as_root_chunk(path: str) -> Chunk:
         mimetype=(
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
+        ctype=CType.Para,
         origin=Origin(location=path),
         metadata={
             "file_hash": file_hash,
