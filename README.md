@@ -10,7 +10,7 @@ pip install ...
 - Supported formats (refer ... for suitable parsers for each format):
     - Text: html, md, txt, epub, latex, org, rtf, rst
     - Office documents: pdf, docx (coming soon: pptx, xlsx)
-    - Images: (coming soon: jpg, png)
+    - Images: jpg, png
     - Audio: (coming soon: wav, mp3)
     - Video: (coming soon: mp4)
     - Code: ipynb, (coming soon: py, js)

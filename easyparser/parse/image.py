@@ -1,18 +1,39 @@
+import logging
 from collections import defaultdict
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType, Origin
+
+logger = logging.getLogger(__name__)
 
 
 class RapidOCRImageText(BaseOperation):
 
     @classmethod
-    def run(cls, chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
-        """OCR text in image with RapidOCR engine."""
+    def run(
+        cls,
+        chunk: Chunk | ChunkGroup,
+        gemini_api_key: str | None = None,
+        gemini_model: str | None = None,
+        **kwargs,
+    ) -> ChunkGroup:
+        """Use RapidOCR do OCR and use Gemini API to transcribe table and figure.
+
+        Args:
+            gemini_api_key: if None, it will try to read from environment
+                variable `GEMINI_API_KEY`.
+            gemini_model: the supported Gemini model names are:
+                "gemini-2.0-flash", "gemini-2.5-pro-exp-03-25". If None,
+                use "gemini-2.0-flash" as default.
+        """
+        import os
+
         import cv2
         from rapid_layout import RapidLayout
         from rapid_layout.utils.post_prepross import compute_iou
         from rapidocr import RapidOCR
 
+        client = None
+        gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
         layout_engine = RapidLayout(model_type="doclayout_docstructbench")
         ocr_engine = None
 
@@ -30,10 +51,10 @@ class RapidOCRImageText(BaseOperation):
                 len(set(lclasses)) == 1 and lclasses[0] == "figure"
             ):
                 # No text detected
-                llm_mode = True
+                vlm_mode = True
                 print(f"Using llm mode: {lclasses}")
             else:
-                llm_mode = False
+                vlm_mode = False
                 print(f"Using ocr mode: {lclasses}")
                 if ocr_engine is None:
                     ocr_engine = RapidOCR(
@@ -43,8 +64,26 @@ class RapidOCRImageText(BaseOperation):
                         }
                     )
 
-            if llm_mode:
-                print("TODO: integrate with LLM")
+            if vlm_mode and client is None:
+                if gemini_api_key is None:
+                    raise ValueError(
+                        "Please supply `gemini_api_key` or set `GEMINI_API_KEY`"
+                    )
+                from google import genai
+
+                client = genai.Client(api_key=gemini_api_key)
+
+            if vlm_mode and client is not None:
+                from PIL import Image
+
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                pil_img = Image.fromarray(img)
+                response = client.models.generate_content(
+                    model=gemini_model or "gemini-2.0-flash",
+                    contents=["Describe this image, in markdown format", pil_img],
+                )
+                mc.text = response.text
+                output.append(mc)
                 continue
 
             ocr_result = ocr_engine(mc.origin.location)
@@ -80,7 +119,9 @@ class RapidOCRImageText(BaseOperation):
                             chunk_lclass.ctype = CType.Header
                         else:
                             chunk_lclass.ctype = CType.Para
-                        chunk_lclass.origin = mc.origin
+                        chunk_lclass.origin = Origin(
+                            source_id=mc.id, location=lboxes[idx_lclass].tolist()
+                        )
                         chunk_lclass.parent = mc
                         childs[mc.id].append(chunk_lclass)
                         id2chunk[chunk_lclass.id] = chunk_lclass
@@ -99,6 +140,42 @@ class RapidOCRImageText(BaseOperation):
                 id2chunk[parent_id].child = children[0]
 
             for parent_id in reversed(childs.keys()):
+                if id2chunk[parent_id].ctype == CType.Table:
+                    if client is None and gemini_api_key is not None:
+                        from google import genai
+
+                        client = genai.Client(api_key=gemini_api_key)
+                    if client is not None:
+                        from PIL import Image
+
+                        x1, y1, x2, y2 = id2chunk[parent_id].origin.location
+                        pil_img = Image.fromarray(
+                            img[int(y1) : int(y2), int(x1) : int(x2)]
+                        )
+                        response = client.models.generate_content(
+                            model=gemini_model or "gemini-2.0-flash",
+                            contents=["Extract the table in markdown format", pil_img],
+                        )
+                        id2chunk[parent_id].text = response.text
+                        continue
+                elif id2chunk[parent_id].ctype == CType.Figure:
+                    if client is None and gemini_api_key is not None:
+                        from google import genai
+
+                        client = genai.Client(api_key=gemini_api_key)
+                    if client is not None:
+                        from PIL import Image
+
+                        x1, y1, x2, y2 = id2chunk[parent_id].origin.location
+                        pil_img = Image.fromarray(
+                            img[int(y1) : int(y2), int(x1) : int(x2)]
+                        )
+                        response = client.models.generate_content(
+                            model=gemini_model or "gemini-2.0-flash",
+                            contents=["Describe the image in markdown format", pil_img],
+                        )
+                        id2chunk[parent_id].text = response.text
+                        continue
                 children = childs[parent_id]
                 id2chunk[parent_id].text = " ".join(child.text for child in children)
 
@@ -108,4 +185,11 @@ class RapidOCRImageText(BaseOperation):
 
     @classmethod
     def py_dependency(cls) -> list[str]:
-        return ["rapidocr", "rapid-layout", "rapid_table", "opencv-python"]
+        return [
+            "rapidocr",
+            "rapid-layout",
+            "rapid_table",
+            "opencv-python",
+            "google-genai",
+            "pillow",
+        ]
