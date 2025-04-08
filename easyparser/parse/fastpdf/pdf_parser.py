@@ -1,6 +1,7 @@
 """Convert any document to Markdown."""
 
 import re
+from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
 from pathlib import Path
@@ -9,21 +10,60 @@ from typing import Any
 import numpy as np
 from pdftext.extraction import dictionary_output
 
-from .pdf_table import img2table_get_tables
+from .pdf_table import get_images_pdfium, get_tables_img2table
+
+DEFAULT_FONT_SIZE = 1.0
+DEFAULT_MODE_FONT_SIZE = 10
+DEFAULT_MODE_FONT_WEIGHT = 350
+HEADER_MAX_LENGTH = 200
+LINE_JOIN_CHAR = "\n"
+SPAN_JOIN_CHAR = " "
 
 
 def scale_bbox(bbox: list[float], width: float, height: float) -> list[float]:
     return [bbox[0] / width, bbox[1] / height, bbox[2] / width, bbox[3] / height]
 
 
+def is_bbox_overlap(bbox_a: list[float], bbox_b: list[float]) -> bool:
+    """Check if two bounding boxes overlap."""
+    return not (
+        bbox_a[0] >= bbox_b[2]
+        or bbox_a[1] >= bbox_b[3]
+        or bbox_a[2] <= bbox_b[0]
+        or bbox_a[3] <= bbox_b[1]
+    )
+
+
+def union_bbox(bbox_list: list[list[float]]) -> list[float]:
+    """Get the union of a list of bounding boxes."""
+    min_x = min(bbox[0] for bbox in bbox_list)
+    min_y = min(bbox[1] for bbox in bbox_list)
+    max_x = max(bbox[2] for bbox in bbox_list)
+    max_y = max(bbox[3] for bbox in bbox_list)
+    return [min_x, min_y, max_x, max_y]
+
+
+def get_non_overlap_lines(
+    lines: list[dict[str, Any]],
+    bbox: list[float],
+) -> list[dict[str, Any]]:
+    """Get the lines that do not overlap with a given bounding box."""
+    non_overlap_lines = []
+    for line in lines:
+        line_bbox = line["bbox"]
+        if not is_bbox_overlap(line_bbox, bbox):
+            non_overlap_lines.append(line)
+    return non_overlap_lines
+
+
 def parsed_pdf_to_markdown(
     pages: list[dict[str, Any]],
-) -> list[str]:  # noqa: C901, PLR0915
+) -> list[str]:
     """Convert a PDF parsed with pdftext to Markdown."""
 
     def extract_font_size(span: dict[str, Any]) -> float:
         """Extract the font size from a text span."""
-        font_size: float = 1.0
+        font_size: float = DEFAULT_FONT_SIZE
         if (
             span["font"]["size"] > 1
         ):  # A value of 1 appears to mean "unknown" in pdftext.
@@ -53,14 +93,46 @@ def parsed_pdf_to_markdown(
             ]
         )
         font_sizes = np.round(font_sizes).astype(int)
-        mode_font_size = np.bincount(font_sizes).argmax()
+
+        try:
+            mode_font_size = np.bincount(font_sizes).argmax()
+        except ValueError:
+            mode_font_size = DEFAULT_MODE_FONT_SIZE
         return mode_font_size
+
+    def get_mode_font_weight(
+        pages: list[dict[str, Any]],
+    ) -> float:
+        """Get the mode font size from a list of text spans."""
+        font_weights = np.asarray(
+            [
+                span["font"]["weight"]
+                for page in pages
+                for block in page["blocks"]
+                for line in block["lines"]
+                for span in line["spans"]
+                if span["font"]["weight"] > 0
+            ]
+        )
+        font_weights = np.round(font_weights).astype(int)
+
+        try:
+            mode_font_weight = np.bincount(font_weights).argmax()
+        except ValueError:
+            mode_font_weight = DEFAULT_MODE_FONT_WEIGHT
+
+        return mode_font_weight
 
     def add_emphasis_metadata(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Add emphasis metadata such as
         bold and italic to a PDF parsed with pdftext."""
         # Copy the pages.
         pages = deepcopy(pages)
+        mode_font_weight = max(
+            get_mode_font_weight(pages),
+            DEFAULT_MODE_FONT_WEIGHT,
+        )
+
         # Add emphasis metadata to the text spans.
         for page in pages:
             for block in page["blocks"]:
@@ -70,9 +142,7 @@ def parsed_pdf_to_markdown(
                     for span in line["spans"]:
                         if "md" not in span:
                             span["md"] = {}
-                        span["md"]["bold"] = (
-                            span["font"]["weight"] > 500
-                        )  # noqa: PLR2004
+                        span["md"]["bold"] = span["font"]["weight"] > mode_font_weight
                         span["md"]["italic"] = (
                             "ital" in (span["font"]["name"] or "").lower()
                         )
@@ -88,9 +158,9 @@ def parsed_pdf_to_markdown(
                     )
         return pages
 
-    def convert_to_markdown(
+    def add_markdown_format(
         pages: list[dict[str, Any]],
-    ) -> list[str]:  # noqa: C901, PLR0912
+    ) -> list[dict[str, Any]]:
         """Convert a list of pages to Markdown."""
         pages_md = []
         output_pages = []
@@ -132,12 +202,16 @@ def parsed_pdf_to_markdown(
                         elif line["md"]["italic"]:
                             line_text = f"*{line_text}*"
 
-                    line_text += "\n"
+                    line["text"] = line_text
+                    line_text += LINE_JOIN_CHAR
                     block_text += line_text
                 block_text = block_text.rstrip()
                 page_md += block_text + "\n\n"
 
-                is_heading_block = all(line["md"]["bold"] for line in block["lines"])
+                is_heading_block = (
+                    all(line["md"]["bold"] for line in block["lines"])
+                    and len(block_text.strip()) < HEADER_MAX_LENGTH
+                )
                 median_font_size = np.max(
                     np.round(
                         [
@@ -148,7 +222,9 @@ def parsed_pdf_to_markdown(
                     )
                 ).astype(int)
                 is_heading_block = (
-                    is_heading_block and median_font_size >= mode_font_size
+                    is_heading_block
+                    and median_font_size >= mode_font_size
+                    and block_text.strip()
                 )
                 if is_heading_block:
                     block_text = f"### {block_text}"
@@ -157,6 +233,14 @@ def parsed_pdf_to_markdown(
                     {
                         "text": block_text,
                         "bbox": scale_bbox(block["bbox"], page_w, page_h),
+                        "lines": [
+                            {
+                                "bbox": scale_bbox(span["bbox"], page_w, page_h),
+                                "text": span["text"],
+                            }
+                            for line in block["lines"]
+                            for span in line["spans"]
+                        ],
                         "type": "heading" if is_heading_block else "text",
                     }
                 )
@@ -169,7 +253,7 @@ def parsed_pdf_to_markdown(
     # Add emphasis metadata.
     pages = add_emphasis_metadata(pages)
     # Convert the pages to Markdown.
-    pages = convert_to_markdown(pages)
+    pages = add_markdown_format(pages)
     return pages
 
 
@@ -187,29 +271,58 @@ def parition_pdf(
         workers=None,
     )
     pages = parsed_pdf_to_markdown(pages)
+    all_images = get_images_pdfium(doc_path)
 
     if extract_table:
-        tables = img2table_get_tables(doc_path, executor=executor)
+        all_tables = get_tables_img2table(doc_path, executor=executor)
 
     for idx, page in enumerate(pages):
         if extract_table:
             text_blocks = page["blocks"]
-            table_blocks = tables.get(idx, [])
+            table_blocks = all_tables.get(idx, [])
+            image_blocks = all_images.get(idx, [])
+
+            block_to_table_mapping = defaultdict(list)
 
             # filter blocks overlap with tables base on bbox
-            for table in table_blocks:
-                table_bbox = table["bbox"]
-                text_blocks = [
-                    block
-                    for block in text_blocks
-                    if (
-                        block["bbox"][0] >= table_bbox[2]
-                        or block["bbox"][1] >= table_bbox[3]
-                        or block["bbox"][2] <= table_bbox[0]
-                        or block["bbox"][3] <= table_bbox[1]
-                    )
-                ]
-            page["blocks"] = text_blocks + table_blocks
+            for text_bid, text_block in enumerate(text_blocks):
+                text_bbox = text_block["bbox"]
+                for table_bid, table in enumerate(table_blocks):
+                    table_bbox = table["bbox"]
+                    if is_bbox_overlap(text_bbox, table_bbox):
+                        non_overlap_lines = get_non_overlap_lines(
+                            text_block["lines"],
+                            table_bbox,
+                        )
+                        if non_overlap_lines:
+                            # update the text block with non-overlapping lines
+                            text_blocks[text_bid]["lines"] = non_overlap_lines
+                            text_blocks[text_bid]["bbox"] = union_bbox(
+                                [line["bbox"] for line in non_overlap_lines]
+                            )
+                            text_blocks[text_bid]["text"] = SPAN_JOIN_CHAR.join(
+                                line["text"] for line in non_overlap_lines
+                            )
+                        else:
+                            text_blocks[text_bid] = None
+                        block_to_table_mapping[text_bid].append(table_bid)
+
+            # join the text blocks with the table blocks
+            # and preserve the reading order
+            text_with_table_blocks = []
+            merged_table_indices = set()
+            for text_bid, text_block in enumerate(text_blocks):
+                if text_block is not None:
+                    text_with_table_blocks.append(text_block)
+
+                if block_to_table_mapping[text_bid]:
+                    for table_bid in block_to_table_mapping[text_bid]:
+                        if table_bid in merged_table_indices:
+                            continue
+                        text_with_table_blocks.append(table_blocks[table_bid])
+                        merged_table_indices.add(table_bid)
+
+            page["blocks"] = text_with_table_blocks + image_blocks
             page.pop("refs", None)
 
     return pages

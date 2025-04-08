@@ -19,6 +19,8 @@ def plot_pdf(pdf_path: str, chunks: ChunkGroup, output_path: str):
         page_to_chunks[chunk_page].append(chunk)
 
     for idx, img in enumerate(doc.images):
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
         page_chunks: list[Chunk] = page_to_chunks[idx]
         page_image_h, page_image_w = img.shape[:2]
 
