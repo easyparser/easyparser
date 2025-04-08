@@ -16,6 +16,7 @@ pip install ...
     - Code: ipynb, (coming soon: py, js)
     - Data interchange: (coming soon: csv, json, yaml, toml)
 - Content linking across files.
+- Task description for agent-oriented RAG strategies.
 - Fast.
     - At least 100MB/s parsing
     - At least 100MB/s splitting
@@ -38,6 +39,8 @@ pip install ...
 ## Cookbook
 
 TBD.
+
+- Application in agent-oriented RAG strategies.
 
 ## Examples
 

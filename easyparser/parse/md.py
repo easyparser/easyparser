@@ -227,18 +227,9 @@ def parse_tree_sitter_node(node, content) -> Chunk:
 
 class Markdown(BaseOperation):
     @classmethod
-    def run(
-        cls,
-        chunk: Chunk | ChunkGroup,
-        **kwargs,
-    ) -> ChunkGroup:
+    def run(cls, chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
         """Split large chunks of text into smaller chunks based on Markdown heading,
         where each chunk is not larger than a given size.
-
-        Args:
-            min_chunk_size: the minimum size of a chunk. If a chunk is smaller than
-                this size, it will be merged with the next chunk. If -1, there is
-                no minimum.
         """
         import tree_sitter_markdown
         from tree_sitter import Language, Parser
@@ -247,7 +238,6 @@ class Markdown(BaseOperation):
         if isinstance(chunk, Chunk):
             chunk = ChunkGroup(chunks=[chunk])
 
-        # Resolve length function
         parser = Parser(Language(tree_sitter_markdown.language()))
 
         output = ChunkGroup()
