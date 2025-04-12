@@ -107,10 +107,17 @@ def parse_ordered_list(ordered_list_node: dict) -> Chunk:
         # Process the item content
         list_item = process_blocks(item)
         list_item.ctype = CType.List
+
+        # Pandoc represent list components as blocks, but we want to represent as
+        # inlines because they aren't structurally children
+        list_child = list_item.child
+        while list_child:
+            if list_child.ctype != CType.List:
+                list_child.ctype = CType.Inline
+            list_child = list_child.next
+
         if marker:
             list_item.content = marker + list_item.content
-
-        list_item.text = list_item.content
 
         if idx == 0:
             chunk.child = list_item
@@ -145,7 +152,15 @@ def parse_bullet_list(bullet_list_node: dict) -> Chunk:
         list_item = process_blocks(item)
         list_item.ctype = CType.List
         list_item.content = "• " + list_item.content
-        list_item.text = "• " + list_item.text
+        list_item.content = list_item.content.strip()
+
+        # Pandoc represent list components as blocks, but we want to represent as
+        # inlines because they aren't structurally children
+        list_child = list_item.child
+        while list_child:
+            if list_child.ctype != CType.List:
+                list_child.ctype = CType.Inline
+            list_child = list_child.next
 
         if idx == 0:
             chunk.child = list_item
@@ -511,16 +526,12 @@ def process_inlines(inlines: list[dict]) -> Chunk:
 
         if inline_type == "Str":
             chunk.content += content
-            chunk.text += content
         elif inline_type == "Space":
             chunk.content += " "
-            chunk.text += " "
         elif inline_type == "SoftBreak":
             chunk.content += " "
-            chunk.text += " "
         elif inline_type == "LineBreak":
             chunk.content += "\n"
-            chunk.text += "\n"
         elif (
             inline_type == "Emph"
             or inline_type == "Strong"
@@ -576,7 +587,6 @@ def process_inlines(inlines: list[dict]) -> Chunk:
             nested = process_inlines(content[1])
 
             chunk.content += f"[Image: {nested.content}]"
-            chunk.text += f"[Image: {nested.text}]"
             nested.summary = nested.content
             nested.metadata = {
                 "url": content[2][0],
@@ -614,7 +624,6 @@ def process_inlines(inlines: list[dict]) -> Chunk:
             code_text = content[1]
 
             chunk.content += code_text
-            chunk.text += code_text
             chunk.metadata["formatting"].append(
                 {"type": "code", "start": start_pos, "end": start_pos + len(code_text)}
             )
@@ -697,7 +706,6 @@ def process_inlines(inlines: list[dict]) -> Chunk:
 
             # Add raw content to text
             chunk.content += raw_content
-            chunk.text += raw_content
 
             # Track raw content
             chunk.metadata["formatting"].append(
@@ -718,7 +726,6 @@ def process_inlines(inlines: list[dict]) -> Chunk:
             elif math_type == "DisplayMath":
                 math_content = f"$${math_content}$$"
 
-            chunk.text += math_content
             chunk.content += math_content
 
             # Track math formatting
@@ -768,9 +775,6 @@ def process_inlines(inlines: list[dict]) -> Chunk:
             )
         else:
             logger.warning(f"Unknown pandoc inline node: {inline_type}")
-
-    if isinstance(chunk.content, str) and not chunk.text:
-        chunk.text = chunk.content
 
     return chunk
 

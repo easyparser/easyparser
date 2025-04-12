@@ -42,7 +42,7 @@ class Origin:
 
 
 class CType:
-    """Represent a chunk type"""
+    """Collection of chunk types and its utility"""
 
     # Chunk with this type will be interpreted as the same level with the parent chunk
     # (e.g. long text)
@@ -55,6 +55,54 @@ class CType:
     Header = "header"
     Figure = "figure"
     Code = "code"
+
+    __available_types = None
+
+    @classmethod
+    def available_types(cls) -> list:
+        if cls.__available_types is None:
+            cls.__available_types = [
+                "inline",
+                "para",
+                "list",
+                "table",
+                "header",
+                "figure",
+                "code",
+            ]
+
+        return cls.__available_types
+
+    @classmethod
+    def markdown(cls, chunk) -> str | None:
+        """Represent chunk and its children as markdown text
+
+        Args:
+            chunk: the chunk to be represented as markdown text
+
+        Returns:
+            str: the markdown text
+        """
+        # If the chunk already has a text, return it
+        if chunk.text:
+            return chunk.text
+
+        # Otherwise, reconstruct the text from the children
+        text: str = chunk.content if isinstance(chunk.content, str) else ""
+        child = chunk.child
+        while child:
+            if child.ctype == CType.Header:
+                text += f"\n\n{'#' * (child.origin.location['level'] + 1)} {child.text}"
+            elif child.ctype == CType.Table:
+                text += f"\n\n{child.text}"
+            elif child.ctype == CType.List:
+                text += f"\n\n- {child.text}"
+            else:
+                text += f"\n\n{child.text}"
+
+            child = child.next
+
+        return text
 
 
 class Chunk:
@@ -80,6 +128,8 @@ class Chunk:
         origin: the location of this object in relative to the parent.
         metadata: metadata of the object, a free-style dictionary.
     """
+
+    ctype_class = CType
 
     def __init__(
         self,
@@ -114,17 +164,29 @@ class Chunk:
         self._store: "BaseStore | None" = None
 
     def __str__(self):
-        text = self.text
-        if len(self.text) > 80:
-            text = f"{self.text[:50]}... ({len(self.text[50:].split())} more words)"
-        text = text.replace("\n", " ")
-        return (
-            self.__class__.__name__
-            + f"(ctype={self.ctype}, mimetype=...{self.mimetype[-5:]}, text={text})"
-        )
+        if isinstance(self.content, str):
+            text = self.content
+            if len(text) > 80:
+                text = f"{text[:50]}... ({len(text[50:].split())} more words)"
+            text = text.replace("\n", " ")
+            content = f"content={text}"
+        else:
+            content = f"mimetype={self.mimetype}"
+
+        return self.__class__.__name__ + f"(ctype={self._ctype}, {content})"
 
     def __repr__(self):
         return self.__str__()
+
+    @property
+    def ctype(self):
+        """Get the chunk type of the object"""
+        return self._ctype
+
+    @ctype.setter
+    def ctype(self, value):
+        """Set the chunk type of the object"""
+        self._ctype = value
 
     @property
     def content(self):
@@ -268,19 +330,91 @@ class Chunk:
         if isinstance(self._child, Chunk):
             return self._child.id
 
-    def render(self, format: Literal["plain", "markdown", "html"] = "plain") -> str:
+    def render(
+        self,
+        format: Literal["plain", "markdown", "2d", "html"] = "plain",
+        **kwargs,
+    ) -> str:
         """Select the executor type to render the object
 
         Args:
             format: the format of the output. Defaults to "text".
         """
-        current = self.text
-        if not self.child:
-            return current
-        child = self.child
-        while child:
-            current += "\n\n" + child.render(format=format)
-            child = child.next
+        if format == "plain":
+            current = self.text
+
+            if current:
+                return current
+
+            current = self.content if isinstance(self.content, str) else ""
+            child = self.child
+            while child:
+                rendered_child = child.render(format=format, **kwargs).strip()
+                if not rendered_child:
+                    child = child.next
+                    continue
+
+                if child.ctype == "inline":
+                    separator = " "
+                elif child.ctype == "list":
+                    separator = "\n"
+                else:
+                    separator = "\n\n"
+
+                current += separator + rendered_child
+                child = child.next
+        elif format == "markdown":
+            import textwrap
+
+            if not kwargs:
+                # header_level, list_level
+                parent = self.parent
+                kwargs = {"header_level": 0}
+                while parent:
+                    if parent.ctype == "header":
+                        kwargs["header_level"] += 1
+                    parent = parent.parent
+
+            # Keep track of header to correctly render the header tag
+            if self.ctype == "header":
+                kwargs["header_level"] += 1
+
+            if self.text:
+                # It means the chunk is pre-rendered, and don't need to render again
+                current = self.text
+            else:
+                current = self.content if isinstance(self.content, str) else ""
+                if (
+                    self.ctype == "header"
+                    and kwargs.get("header_level", 0) > 0
+                    and not current.startswith("#")
+                ):
+                    current = f"{'#' * kwargs['header_level']} {current}"
+                child = self.child
+                while child:
+                    # Don't strip left whitespace because of list indentation
+                    rendered_child = (
+                        child.render(format=format, **kwargs).rstrip().lstrip("\n")
+                    )
+                    rendered_child = textwrap.dedent(rendered_child)
+                    if not rendered_child:
+                        child = child.next
+                        continue
+                    if child.ctype == "inline":
+                        separator = " "
+                    elif child.ctype == "list":
+                        rendered_child = textwrap.indent(rendered_child, "  ")
+                        separator = "\n"
+                    else:
+                        separator = "\n\n"
+
+                    current += separator + rendered_child
+                    child = child.next
+        else:
+            raise NotImplementedError(
+                f"Render as `format={format}` is not yet supported"
+            )
+
         return current
 
     def asdict(self):

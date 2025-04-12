@@ -86,7 +86,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
         content: the bytestring
     """
     if node.type == "pipe_table":
-        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        text = content[node.start_byte : node.end_byte].decode("utf-8").strip()
         return Chunk(
             mimetype="text/markdown",
             ctype=CType.Table,
@@ -94,7 +94,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
             text=text,
         )
     elif node.type == "paragraph":
-        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        text = content[node.start_byte : node.end_byte].decode("utf-8").strip()
         return Chunk(
             mimetype="text/plain",
             ctype=CType.Para,
@@ -102,7 +102,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
             text=text,
         )
     elif node.type == "html_block":
-        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        text = content[node.start_byte : node.end_byte].decode("utf-8").strip()
         return Chunk(
             mimetype="text/html",
             ctype=CType.Code,
@@ -110,7 +110,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
             text=text,
         )
     elif node.type == "fenced_code_block":
-        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        text = content[node.start_byte : node.end_byte].decode("utf-8").strip()
         return Chunk(
             mimetype="text/plain",
             ctype=CType.Code,
@@ -125,7 +125,6 @@ def parse_tree_sitter_node(node, content) -> Chunk:
             if idx == 0 and child_chunk.ctype == CType.Header:
                 chunk = child_chunk
                 continue
-            chunk.text += child_chunk.text + "\n"
             child_chunk.parent = chunk
             if chunk.child is None:
                 chunk.child = child_chunk
@@ -133,10 +132,9 @@ def parse_tree_sitter_node(node, content) -> Chunk:
                 prev.next = child_chunk
                 child_chunk.prev = prev
             prev = child_chunk
-        chunk.text = chunk.text.strip()
         return chunk
     elif "heading" in node.type:
-        text = content[node.start_byte : node.end_byte].decode("utf-8")
+        text = content[node.start_byte : node.end_byte].decode("utf-8").strip()
         lvl = None
         for child in node.children:
             if child.type == "atx_h1_marker":
@@ -155,7 +153,6 @@ def parse_tree_sitter_node(node, content) -> Chunk:
         chunk = Chunk(
             mimetype="text/plain",
             content=text,
-            text=text,
         )
 
         if lvl is None:
@@ -198,16 +195,14 @@ def parse_tree_sitter_node(node, content) -> Chunk:
                     f"List marker {child.children[0].type} not implemented"
                 )
             list_item = Chunk(
-                mimetype="text/markdown", ctype=CType.List, content=marker, text=marker
+                mimetype="text/markdown", ctype=CType.List, content=marker
             )
             item_content = parse_tree_sitter_node(child.children[1], content)
             item_content.ctype = CType.Inline
             item_content.parent = list_item
-            list_item.text += " " + item_content.text
             list_item.child = item_content
             if len(child.children) == 3:
                 nested_list = parse_tree_sitter_node(child.children[2], content)
-                list_item.text += "\n" + nested_list.text
 
                 nested_list.parent = list_item
                 item_content.next = nested_list
@@ -242,7 +237,9 @@ class Markdown(BaseOperation):
 
         output = ChunkGroup()
         for mc in chunk:
-            ct = mc.content
+            location = mc.origin.location
+            with open(location) as f:
+                ct = f.read()
 
             # Convert setext to atx
             ct_len = len(ct)

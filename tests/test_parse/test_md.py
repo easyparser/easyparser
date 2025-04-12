@@ -8,8 +8,6 @@ md_path1 = str(Path(__file__).parent.parent / "assets" / "lz.md")
 
 def test_parse_markdown():
     root = mime_md.as_root_chunk(md_path1)
-    with open(md_path1) as f:
-        root.content = f.read()
     chunks = Markdown.run(root)
     chunk = list(chunks.iter_groups())[0][0]
     chunk.print_graph()
