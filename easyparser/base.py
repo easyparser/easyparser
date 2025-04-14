@@ -55,6 +55,7 @@ class CType:
     Header = "header"
     Figure = "figure"
     Code = "code"
+    Div = "div"  # logically organized (e.g. a pptx slide)
 
     __available_types = None
 
@@ -69,6 +70,7 @@ class CType:
                 "header",
                 "figure",
                 "code",
+                "div",
             ]
 
         return cls.__available_types

@@ -1,4 +1,5 @@
 import logging
+import os
 from collections import defaultdict
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType, Origin
@@ -25,8 +26,6 @@ class RapidOCRImageText(BaseOperation):
                 "gemini-2.0-flash", "gemini-2.5-pro-exp-03-25". If None,
                 use "gemini-2.0-flash" as default.
         """
-        import os
-
         import cv2
         from rapid_layout import RapidLayout
         from rapid_layout.utils.post_prepross import compute_iou
@@ -176,8 +175,6 @@ class RapidOCRImageText(BaseOperation):
                         )
                         id2chunk[parent_id].text = response.text
                         continue
-                children = childs[parent_id]
-                id2chunk[parent_id].text = " ".join(child.text for child in children)
 
             output.append(mc)
 
