@@ -9,7 +9,7 @@ pip install ...
 - Maintain sectional layout structure during parsing and chunking (*).
 - Supported formats (refer ... for suitable parsers for each format):
     - Text: html, md, txt, epub, latex, org, rtf, rst
-    - Office documents: pdf, docx (coming soon: pptx, xlsx)
+    - Office documents: pdf, docx, pptx (coming soon: xlsx)
     - Images: jpg, png
     - Audio: (coming soon: wav, mp3)
     - Video: (coming soon: mp4)

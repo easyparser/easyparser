@@ -1,51 +1,93 @@
-"""
-sorted_shapes = list(sorted_shapes)
-print(f"{slide_num=} - {len(sorted_shapes)=}")
-x1s, y1s, weights = [], [], []
-for idx, shape in enumerate(sorted_shapes):
-    if not hasattr(shape, "text"):
-        continue
-    x1 = shape.left / presentation.slide_width
-    y1 = shape.top / presentation.slide_height
-    x1s.append(x1)
-    y1s.append(y1)
-    weights.append(len(shape.text))
-    x2 = (shape.left + shape.width) / presentation.slide_width
-    y2 = (shape.top + shape.height) / presentation.slide_height
-    print(f"{idx=} - {x1}, {y1}, {x2}, {y2}")
-import math
-import numpy as np
-def weighted_std(values, weights):
-    \"""
-    Return the weighted average and standard deviation.
-
-    They weights are in effect first normalized so that they
-    sum to 1 (and so they must not all be 0).
-
-    values, weights -- NumPy ndarrays with the same shape.
-    \"""
-    average = np.average(values, weights=weights)
-    # Fast and numerically precise:
-    variance = np.average((values-average)**2, weights=weights)
-    return math.sqrt(variance)
-
-print("Std:", np.std(x1s), weighted_std(x1s, weights))
-print()
-"""
-
 import io
+import logging
 import re
+import shutil
+import subprocess
+import tempfile
 from operator import attrgetter
+from pathlib import Path
 from typing import Any
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+
+logger = logging.getLogger(__name__)
+
+
+def pptx_to_pdf(file_path: str, temp_dir: str) -> str:
+    """Convert pptx to pdf using LibreOffice"""
+    if not temp_dir:
+        temp_dir = tempfile.gettempdir()
+
+    file_name = Path(file_path).name
+    output_dir = Path(temp_dir) / "output"
+    soffice_dir = Path(temp_dir) / "soffice"
+
+    print(f"Converting {file_path} to PDF at {output_dir}...")
+    subprocess.run(
+        [
+            "soffice",
+            f"-env:UserInstallation=file://{soffice_dir}",
+            "--headless",
+            "--convert-to",
+            "pdf",
+            file_path,
+            "--outdir",
+            str(output_dir),
+        ],
+        check=True,
+    )
+
+    return str(output_dir / file_name.replace(".pptx", ".pdf"))
+
+
+def weighted_std(values, weights):
+    """Return weighted standard deviation of the values"""
+    import math
+
+    import numpy as np
+
+    if sum(weights) == 0:
+        return 0.0
+
+    average = np.average(values, weights=weights)
+    variance = np.average((values - average) ** 2, weights=weights)
+
+    return math.sqrt(variance)
+
+
+def use_vlm_or_not(shapes, slide_width, slide_height) -> bool:
+    """Decide whether should use VLM to generate a description of the slide.
+
+    Based on following heuristics:
+        - Check if the text locations spread out too much (hinting text location
+        plays an important role to understand the slide)
+    """
+    x1s, weights = [], []
+    for _i, shape in enumerate(shapes):
+        if not hasattr(shape, "text"):
+            continue
+        x1s.append(shape.left / slide_width)
+        weights.append(len(shape.text))
+
+    return weighted_std(x1s, weights) > 0.15
+
+
+def llm_caption(pil_image, gemini_api_key, gemini_model, prompt) -> str:
+    """Generate a caption for the image using Gemini LLM."""
+    from google import genai
+
+    client = genai.Client(api_key=gemini_api_key)
+    response = client.models.generate_content(
+        model=gemini_model or "gemini-2.0-flash",
+        contents=[prompt, pil_image],
+    )
+    return response.text or ""
 
 
 def parse_image(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chunk:
     """Parse image, graph, chart, or other visual element. Combine provided alt
     text with LLM captioning.
     """
-    from google import genai
     from PIL import Image
 
     llm_description = ""
@@ -59,13 +101,14 @@ def parse_image(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chu
     )
 
     if llm_key := kwargs.get("gemini_api_key"):
-        client = genai.Client(api_key=llm_key)
         pil_img = Image.open(io.BytesIO(shape.image.blob))
-        response = client.models.generate_content(
-            model=kwargs.get("gemini_model") or "gemini-2.0-flash",
-            contents=["Extract the table in markdown format", pil_img],
+        llm_description = llm_caption(
+            pil_img,
+            llm_key,
+            kwargs.get("gemini_model"),
+            "Describe this image. If there are any text inside this image, "
+            "ensure it show up in the output. Just do it and don't chat.",
         )
-        llm_description = response.text or ""
 
     try:
         # https://github.com/scanny/python-pptx/pull/512#issuecomment-1713100069
@@ -226,6 +269,7 @@ class PptxParser(BaseOperation):
         **kwargs: Any,
     ) -> ChunkGroup:
         import pptx
+        import pypdfium2 as pdfium
 
         # Resolve chunk
         if isinstance(chunk, Chunk):
@@ -233,32 +277,64 @@ class PptxParser(BaseOperation):
 
         output = ChunkGroup()
         for mc in chunk:
-            presentation = pptx.Presentation(mc.origin.location)
+            pres = pptx.Presentation(mc.origin.location)
+            pdf_converted_path, temp_dir, pdf = "", "", None
             prev_slide = None
-            for page_num, slide in enumerate(presentation.slides, start=1):
-                slide_chunk = Chunk(
-                    mimetype=CType.Div,
-                    ctype=CType.Div,
-                    parent=mc,
-                    metadata={
-                        "page_num": page_num,
-                    },
-                )
-
-                shapes = sorted(slide.shapes, key=attrgetter("top", "left"))
+            for page_num, slide in enumerate(pres.slides, start=1):
                 slide_children = []
-                for shape in shapes:
-                    child = parse_shape(
-                        shape=shape,
-                        parent_chunk=slide_chunk,
-                        slide_width=presentation.slide_width,
-                        slide_height=presentation.slide_height,
-                        gemini_api_key=gemini_api_key,
-                        gemini_model=gemini_model,
+                shapes = sorted(slide.shapes, key=attrgetter("top", "left"))
+
+                use_vlm = False
+                if gemini_api_key and use_vlm_or_not(
+                    shapes, pres.slide_width, pres.slide_height
+                ):
+                    print(f"Using VLM for slide {page_num}")
+                    use_vlm = True
+                    if pdf is None:
+                        temp_dir = tempfile.mkdtemp()
+                        pdf_converted_path = pptx_to_pdf(mc.origin.location, temp_dir)
+                        pdf = pdfium.PdfDocument(pdf_converted_path)
+
+                    pil_image = pdf[page_num - 1].render().to_pil()
+                    caption = llm_caption(
+                        pil_image,
+                        gemini_api_key,
+                        gemini_model,
+                        "Transcribe this slide, respecting reading order. Don't chat.",
                     )
-                    if child is not None:
-                        slide_children.append(child)
-                        child.parent = slide_chunk
+                    slide_chunk = Chunk(
+                        mimetype=CType.Div,
+                        ctype=CType.Para,
+                        text=f"**Slide {page_num}**\n{caption}",
+                        origin=mc.origin,
+                        parent=mc,
+                        metadata={
+                            "page_num": page_num,
+                        },
+                    )
+                else:
+                    slide_chunk = Chunk(
+                        mimetype=CType.Div,
+                        ctype=CType.Div,
+                        origin=mc.origin,
+                        parent=mc,
+                        metadata={
+                            "page_num": page_num,
+                        },
+                    )
+
+                    for shape in shapes:
+                        child = parse_shape(
+                            shape=shape,
+                            parent_chunk=slide_chunk,
+                            slide_width=pres.slide_width,
+                            slide_height=pres.slide_height,
+                            gemini_api_key=gemini_api_key,
+                            gemini_model=gemini_model,
+                        )
+                        if child is not None:
+                            slide_children.append(child)
+                            child.parent = slide_chunk
 
                 if slide.has_notes_slide:
                     text_frame = ""
@@ -275,6 +351,8 @@ class PptxParser(BaseOperation):
                         )
                         slide_children.append(child)
                         child.parent = slide_chunk
+                        if use_vlm:
+                            slide_chunk.text += f"\n{child.content}"
 
                 for idx, child in enumerate(slide_children):
                     if idx == 0:
@@ -283,7 +361,9 @@ class PptxParser(BaseOperation):
                     child.prev = slide_children[idx - 1]
                     slide_children[idx - 1].next = child
 
-                slide_chunk.text = f"**Slide {page_num}**{slide_chunk.render()}"
+                if not use_vlm:
+                    slide_chunk.text = f"**Slide {page_num}**{slide_chunk.render()}"
+
                 if prev_slide is None:
                     mc.child = slide_chunk
                 else:
@@ -292,6 +372,8 @@ class PptxParser(BaseOperation):
 
                 prev_slide = slide_chunk
 
+            if temp_dir:
+                shutil.rmtree(temp_dir)
             output.append(mc)
 
         return output
@@ -299,4 +381,4 @@ class PptxParser(BaseOperation):
     @classmethod
     def py_dependency(cls) -> list[str]:
         """Return the list of Python dependencies required by this converter."""
-        return ["python-pptx", "google-genai"]
+        return ["python-pptx", "google-genai", "Pillow", "pypdfium2", "numpy"]
