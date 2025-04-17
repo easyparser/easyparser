@@ -838,7 +838,7 @@ class PandocEngine(BaseOperation):
 
                 last_chunk = ch
 
-            output.add_group(ChunkGroup(root=root))
+            output.append(root)
             media.cleanup()
 
         return output

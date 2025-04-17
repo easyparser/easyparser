@@ -16,6 +16,7 @@ pip install ...
     - Code: ipynb, (coming soon: py, js)
     - Data interchange: (coming soon: csv, json, yaml, toml)
 - Content linking across files.
+- Suppport LLM integration for correct content parsing.
 - Task description for agent-oriented RAG strategies.
 - Fast.
     - At least 100MB/s parsing

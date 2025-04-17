@@ -475,6 +475,43 @@ class Chunk:
             self.child = their_child
             their_child.parent = self
 
+    def clean(self, unwrap_single_child: bool = True):
+        """Clean the chunk tree recursivly
+
+        Args:
+            unwrap_single_child: if True, if the parent chunk has empty content, and
+                has a single child chunk, then the child chunk will replace the
+                parent chunk in the hierarchy
+        """
+        child = self.child
+        while child:
+            child.clean(unwrap_single_child=unwrap_single_child)
+            child = child.next
+
+        if unwrap_single_child:
+            # Assume the child content information if it is the single child, and
+            # our content is empty
+            if (
+                not self.content  # doesn't have content
+                and isinstance(self.child, Chunk)  # has child
+                and self.child.next is None  # has only one child
+            ):
+                # Get mimetype, ctype and content
+                self.mimetype = self.child.mimetype
+                if self.child.ctype != CType.Inline:
+                    self.ctype = self.child.ctype
+                self.content = self.child.content
+
+                # Combine metadata
+                if self.metadata is not None:
+                    if self.child.metadata is not None:
+                        self.metadata.update(self.child.metadata)
+                else:
+                    self.metadata = self.child.metadata
+
+                # Remove child
+                self.child = self.child.child
+
     def apply(self, fn: Callable[["Chunk", int], None], depth: int = 0):
         """Apply a function to the chunk and all its children"""
         fn(self, depth)

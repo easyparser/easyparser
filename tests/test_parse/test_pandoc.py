@@ -10,5 +10,5 @@ docx_path = str(Path(__file__).parent.parent / "assets" / "with_image.docx")
 def test_pandoc_docx():
     root = mime_docx.as_root_chunk(docx_path)
     chunks = PandocEngine.run(root)
-    chunk = list(chunks.iter_groups())[0][0]
+    chunk = chunks[0]
     assert isinstance(chunk, Chunk)
