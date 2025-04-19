@@ -6,6 +6,16 @@ pip install ...
 
 ## Features
 
+Library responsibility:
+
+Graph:
+Files ----> Parse ----> Chunk ----> Index ----> Search ----> Represent retrieval context -----> LLM
+We are responsible for:
+- Parse, Chunk
+- Represent retrieval context
+
+**How `easyparser` is different?** We chunk the document structure rather than the text. This is to take the document structure into account to create more sensible chunks.
+
 - Maintain sectional layout structure during parsing and chunking (*).
 - Supported formats (refer ... for suitable parsers for each format):
     - Text: html, md, txt, epub, latex, org, rtf, rst

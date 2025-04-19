@@ -79,7 +79,7 @@ def llm_caption(pil_image, gemini_api_key, gemini_model, prompt) -> str:
     client = genai.Client(api_key=gemini_api_key)
     response = client.models.generate_content(
         model=gemini_model or "gemini-2.0-flash",
-        contents=[prompt, pil_image],
+        contents=[pil_image, prompt],
     )
     return response.text or ""
 
@@ -102,13 +102,17 @@ def parse_image(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chu
 
     if llm_key := kwargs.get("gemini_api_key"):
         pil_img = Image.open(io.BytesIO(shape.image.blob))
-        llm_description = llm_caption(
-            pil_img,
-            llm_key,
-            kwargs.get("gemini_model"),
-            "Describe this image. If there are any text inside this image, "
-            "ensure it show up in the output. Just do it and don't chat.",
-        )
+        try:
+            llm_description = llm_caption(
+                pil_img,
+                llm_key,
+                kwargs.get("gemini_model"),
+                "Describe this image. If there are any text inside this image, "
+                "transcribe the text as closest as possible.",
+            )
+        except Exception as e:
+            logger.error(f"Error in LLM captioning: {e}")
+            llm_description = ""
 
     try:
         # https://github.com/scanny/python-pptx/pull/512#issuecomment-1713100069
@@ -300,7 +304,7 @@ class PptxParser(BaseOperation):
                         pil_image,
                         gemini_api_key,
                         gemini_model,
-                        "Transcribe this slide, respecting reading order. Don't chat.",
+                        "Provide detailed description of this slide.",
                     )
                     slide_chunk = Chunk(
                         mimetype=CType.Div,
