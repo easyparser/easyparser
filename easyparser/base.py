@@ -162,6 +162,7 @@ class Chunk:
         self.metadata = metadata
 
         # internal use
+        self._content_length: int | None = None
         self._history: list = history or []
         self._store: "BaseStore | None" = None
 
@@ -201,6 +202,26 @@ class Chunk:
     def content(self, value):
         """Set the content of the object"""
         self._content = value
+        if isinstance(value, str):
+            self._content_length = len(value)
+
+    @property
+    def content_length(self) -> int:
+        """Get the length of the content of the object"""
+        if self._content_length is not None:
+            return self._content_length
+
+        content_length = 0
+        child = self.child
+        while child := self.child:
+            content_length += child.content_length
+            child = child.next
+
+        if isinstance(self.content, str):
+            content_length += len(self.content)
+
+        self._content_length = content_length
+        return self._content_length
 
     @property
     def history(self) -> list:
@@ -525,6 +546,15 @@ class Chunk:
             print("    " * depth, node)
 
         self.apply(print_node)
+
+    def get_ids(self) -> list[str]:
+        """Get all the ids of the chunk and its children"""
+        ids = [self.id]
+        child = self.child
+        while child:
+            ids.extend(child.get_ids())
+            child = child.next
+        return ids
 
 
 class ChunkGroup:
