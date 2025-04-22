@@ -53,7 +53,7 @@ def plot_blocks(path: str, pages: list[dict], output_path: str):
                 2,
             )
 
-            if block["type"] == "table":
+            if block["type"] == "table" and "rows" in block:
                 for row in block["rows"]:
                     for cell in row:
                         x1, y1, x2, y2 = cell

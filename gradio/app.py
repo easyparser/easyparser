@@ -22,7 +22,15 @@ TMP_DIR = Path("/tmp/visualize")
 TMP_DIR.mkdir(exist_ok=True)
 
 
-def convert_document(pdf_path, method, enabled=True):
+def format_chunk(chunk):
+    text = chunk.text
+    if chunk.metadata["label"] == "heading":
+        text = f"### {text}"
+
+    return text
+
+
+def convert_document(pdf_path, method, use_full_page=False, enabled=True):
     if enabled:
         print("Processing file", pdf_path, "with method", method)
     else:
@@ -34,9 +42,21 @@ def convert_document(pdf_path, method, enabled=True):
 
     root = mime_pdf.as_root_chunk(pdf_path)
     method = METHOD_MAP[method]
-    chunks = method.run(root)
 
-    text = "\n\n".join([chunk.text for chunk in chunks])
+    if method == FastPDF:
+        chunks = method.run(
+            root,
+            render_full_page=use_full_page,
+        )
+    else:
+        chunks = method.run(root)
+
+    print("Table Of Content")
+    for chunk in chunks:
+        if chunk.metadata["label"] == "heading":
+            print(chunk.text)
+
+    text = "\n\n".join([format_chunk(chunk) for chunk in chunks])
 
     duration = time.time() - start
     duration_message = f"Conversion with {method} took *{duration:.2f} seconds*"
@@ -111,7 +131,9 @@ def show_tabs(selected_methods):
 
 
 with gr.Blocks(
-    theme=gr.themes.Ocean(),
+    theme=gr.themes.Ocean(
+        font_mono="PT Mono",
+    ),
 ) as demo:
     with open("gradio/header.html") as file:
         header = file.read()
@@ -121,7 +143,7 @@ with gr.Blocks(
     visualization_sub_tabs = []
 
     with gr.Row():
-        with gr.Column(variant="panel", scale=5):
+        with gr.Column(variant="panel", scale=3):
             input_file = gr.File(
                 label="Upload PDF document",
                 file_types=[
@@ -146,19 +168,22 @@ with gr.Blocks(
             )
 
         with gr.Column(variant="panel", scale=5):
-            with gr.Row():
-                methods = gr.Dropdown(
-                    METHOD_LIST,
-                    label=("Conversion methods"),
-                    value=["easyparser_fastpdf"],
-                    multiselect=True,
-                )
+            methods = gr.Dropdown(
+                METHOD_LIST,
+                label=("Conversion methods"),
+                value=["easyparser_fastpdf"],
+                multiselect=True,
+            )
+            full_page_render = gr.Checkbox(
+                label="Use full page layout-preserved rendering",
+                value=False,
+            )
             with gr.Row():
                 convert_btn = gr.Button("Convert", variant="primary", scale=2)
                 clear_btn = gr.ClearButton(value="Clear", scale=1)
 
     with gr.Row():
-        with gr.Column(variant="panel", scale=5):
+        with gr.Column(variant="panel", scale=3):
             pdf_preview = PDF(
                 label="PDF preview",
                 interactive=False,
@@ -233,10 +258,11 @@ with gr.Blocks(
 
             return msg
 
-        def process_method(input_file, selected_methods, method=method):
+        def process_method(input_file, selected_methods, use_full_page, method=method):
             return convert_document(
                 input_file,
                 method=method,
+                use_full_page=use_full_page,
                 enabled=method in selected_methods,
             )
 
@@ -245,10 +271,10 @@ with gr.Blocks(
             inputs=[methods],
             outputs=[progress_status],
         ).then(
-            fn=lambda input_file, methods, method=method: process_method(
-                input_file, methods, method
+            fn=lambda input_file, methods, use_full_page, method=method: process_method(
+                input_file, methods, use_full_page, method
             ),
-            inputs=[input_file, methods],
+            inputs=[input_file, methods, full_page_render],
             outputs=output_components[idx * 4 : (idx + 1) * 4],
         )
 

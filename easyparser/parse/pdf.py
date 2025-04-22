@@ -153,6 +153,8 @@ class FastPDF(BaseOperation):
     def run(
         cls,
         chunk: Chunk | ChunkGroup,
+        use_layout_parser: bool = True,
+        render_full_page: bool = False,
         extract_table: bool = True,
         use_multiprocessing: bool = False,
         **kwargs,
@@ -164,7 +166,8 @@ class FastPDF(BaseOperation):
         """
         from concurrent.futures import ProcessPoolExecutor
 
-        from .fastpdf.pdf_parser import parition_pdf
+        from .fastpdf.pdf_heuristic_parser import parition_pdf_heuristic
+        from .fastpdf.pdf_layout_parser import partition_pdf_layout
 
         executor = ProcessPoolExecutor() if use_multiprocessing else None
         if isinstance(chunk, Chunk):
@@ -177,11 +180,17 @@ class FastPDF(BaseOperation):
                 raise ValueError("Origin is not defined")
 
             # call the main function to partition the PDF
-            pages = parition_pdf(
-                str(pdf_root.origin.location),
-                executor=executor,
-                extract_table=extract_table,
-            )
+            if use_layout_parser:
+                pages = partition_pdf_layout(
+                    str(pdf_root.origin.location),
+                    render_full_page=render_full_page,
+                )
+            else:
+                pages = parition_pdf_heuristic(
+                    str(pdf_root.origin.location),
+                    executor=executor,
+                    extract_table=extract_table,
+                )
 
             for page in pages:
                 page_label = page["page"] + 1
@@ -339,6 +348,7 @@ class UnstructuredPDF(BaseOperation):
             elements = partition_pdf(
                 file_path,
                 strategy=strategy,
+                infer_table_structure=True,
                 extract_image_block_types=list(UnstructuredPDF.image_types),
                 extract_image_block_to_payload=True,
                 **kwargs,
@@ -357,7 +367,12 @@ class UnstructuredPDF(BaseOperation):
                         y2 / height,
                         e.metadata.page_number,
                     )
-                text = e.text
+                if e.category == "Table":
+                    text = e.metadata.text_as_html
+                    if text is None:
+                        text = e.text
+                else:
+                    text = e.text
                 if e.category in UnstructuredPDF.text_types:
                     mimetype = "text/plain"
                     content = e.text

@@ -1,7 +1,6 @@
 """Convert any document to Markdown."""
 
 import re
-from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
 from pathlib import Path
@@ -10,55 +9,20 @@ from typing import Any
 import numpy as np
 from pdftext.extraction import dictionary_output
 
-from .pdf_table import get_images_pdfium, get_tables_img2table
+from .pdf_image import get_images_pdfium
+from .pdf_table import get_tables_img2table
+from .util import merge_text_and_table_blocks, scale_bbox
 
 DEFAULT_FONT_SIZE = 1.0
 DEFAULT_MODE_FONT_SIZE = 10
 DEFAULT_MODE_FONT_WEIGHT = 350
 HEADER_MAX_LENGTH = 200
 LINE_JOIN_CHAR = "\n"
-SPAN_JOIN_CHAR = " "
-
-
-def scale_bbox(bbox: list[float], width: float, height: float) -> list[float]:
-    return [bbox[0] / width, bbox[1] / height, bbox[2] / width, bbox[3] / height]
-
-
-def is_bbox_overlap(bbox_a: list[float], bbox_b: list[float]) -> bool:
-    """Check if two bounding boxes overlap."""
-    return not (
-        bbox_a[0] >= bbox_b[2]
-        or bbox_a[1] >= bbox_b[3]
-        or bbox_a[2] <= bbox_b[0]
-        or bbox_a[3] <= bbox_b[1]
-    )
-
-
-def union_bbox(bbox_list: list[list[float]]) -> list[float]:
-    """Get the union of a list of bounding boxes."""
-    min_x = min(bbox[0] for bbox in bbox_list)
-    min_y = min(bbox[1] for bbox in bbox_list)
-    max_x = max(bbox[2] for bbox in bbox_list)
-    max_y = max(bbox[3] for bbox in bbox_list)
-    return [min_x, min_y, max_x, max_y]
-
-
-def get_non_overlap_lines(
-    lines: list[dict[str, Any]],
-    bbox: list[float],
-) -> list[dict[str, Any]]:
-    """Get the lines that do not overlap with a given bounding box."""
-    non_overlap_lines = []
-    for line in lines:
-        line_bbox = line["bbox"]
-        if not is_bbox_overlap(line_bbox, bbox):
-            non_overlap_lines.append(line)
-    return non_overlap_lines
 
 
 def parsed_pdf_to_markdown(
     pages: list[dict[str, Any]],
-) -> list[str]:
+) -> list[dict[str, Any]]:
     """Convert a PDF parsed with pdftext to Markdown."""
 
     def extract_font_size(span: dict[str, Any]) -> float:
@@ -162,12 +126,10 @@ def parsed_pdf_to_markdown(
         pages: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Convert a list of pages to Markdown."""
-        pages_md = []
         output_pages = []
         mode_font_size = get_mode_font_size(pages)
 
         for page in pages:
-            page_md = ""
             output_blocks = []
 
             page_w, page_h = page["width"], page["height"]
@@ -190,7 +152,8 @@ def parsed_pdf_to_markdown(
                             line_text += f"*{span['text']}*"
                         else:
                             line_text += span["text"]
-                    # Add emphasis to the line (if it's not a heading or whitespace).
+
+                    # Add emphasis to the line (if it's not a whitespace).
                     line_text = line_text.rstrip()
                     line_is_whitespace = not line_text.strip()
 
@@ -206,7 +169,6 @@ def parsed_pdf_to_markdown(
                     line_text += LINE_JOIN_CHAR
                     block_text += line_text
                 block_text = block_text.rstrip()
-                page_md += block_text + "\n\n"
 
                 is_heading_block = (
                     all(line["md"]["bold"] for line in block["lines"])
@@ -226,8 +188,6 @@ def parsed_pdf_to_markdown(
                     and median_font_size >= mode_font_size
                     and block_text.strip()
                 )
-                if is_heading_block:
-                    block_text = f"### {block_text}"
 
                 output_blocks.append(
                     {
@@ -247,7 +207,6 @@ def parsed_pdf_to_markdown(
 
             page["blocks"] = output_blocks
             output_pages.append(page)
-            pages_md.append(page_md.strip())
         return output_pages
 
     # Add emphasis metadata.
@@ -257,8 +216,8 @@ def parsed_pdf_to_markdown(
     return pages
 
 
-def parition_pdf(
-    doc_path: Path,
+def parition_pdf_heuristic(
+    doc_path: Path | str,
     executor: ProcessPoolExecutor | None,
     extract_table=False,
 ) -> str:
@@ -277,53 +236,18 @@ def parition_pdf(
         all_tables = get_tables_img2table(doc_path, executor=executor)
 
     for idx, page in enumerate(pages):
+        image_blocks = all_images.get(idx, [])
+
         if extract_table:
             text_blocks = page["blocks"]
             table_blocks = all_tables.get(idx, [])
-            image_blocks = all_images.get(idx, [])
+            page["blocks"] = merge_text_and_table_blocks(
+                text_blocks,
+                table_blocks,
+            )
 
-            block_to_table_mapping = defaultdict(list)
-
-            # filter blocks overlap with tables base on bbox
-            for text_bid, text_block in enumerate(text_blocks):
-                text_bbox = text_block["bbox"]
-                for table_bid, table in enumerate(table_blocks):
-                    table_bbox = table["bbox"]
-                    if is_bbox_overlap(text_bbox, table_bbox):
-                        non_overlap_lines = get_non_overlap_lines(
-                            text_block["lines"],
-                            table_bbox,
-                        )
-                        if non_overlap_lines:
-                            # update the text block with non-overlapping lines
-                            text_blocks[text_bid]["lines"] = non_overlap_lines
-                            text_blocks[text_bid]["bbox"] = union_bbox(
-                                [line["bbox"] for line in non_overlap_lines]
-                            )
-                            text_blocks[text_bid]["text"] = SPAN_JOIN_CHAR.join(
-                                line["text"] for line in non_overlap_lines
-                            )
-                        else:
-                            text_blocks[text_bid] = None
-                        block_to_table_mapping[text_bid].append(table_bid)
-
-            # join the text blocks with the table blocks
-            # and preserve the reading order
-            text_with_table_blocks = []
-            merged_table_indices = set()
-            for text_bid, text_block in enumerate(text_blocks):
-                if text_block is not None:
-                    text_with_table_blocks.append(text_block)
-
-                if block_to_table_mapping[text_bid]:
-                    for table_bid in block_to_table_mapping[text_bid]:
-                        if table_bid in merged_table_indices:
-                            continue
-                        text_with_table_blocks.append(table_blocks[table_bid])
-                        merged_table_indices.add(table_bid)
-
-            page["blocks"] = text_with_table_blocks + image_blocks
-            page.pop("refs", None)
+        page["blocks"] += image_blocks
+        page.pop("refs", None)
 
     return pages
 

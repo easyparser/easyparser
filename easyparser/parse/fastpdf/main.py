@@ -5,7 +5,8 @@ import pymupdf4llm
 from img2table.document import PDF
 from plot import plot_blocks
 
-from easyparser.parse.fastpdf.pdf_parser import pages_to_markdown, parition_pdf
+from easyparser.parse.fastpdf.pdf_heuristic_parser import pages_to_markdown
+from easyparser.parse.fastpdf.pdf_layout_parser import partition_pdf_layout
 
 if __name__ == "__main__":
     executor = ProcessPoolExecutor()
@@ -27,7 +28,8 @@ if __name__ == "__main__":
     print(f"Average time per page: {(end_time - start_time) / num_pages:.2f}s")
 
     start_time = time.time()
-    pages = parition_pdf(input_path, executor=executor, extract_table=True)
+    # pages = parition_pdf_heuristic(input_path, executor=executor, extract_table=True)
+    pages = partition_pdf_layout(input_path, render_full_page=True)
     end_time = time.time()
 
     num_pages = len(pages)
@@ -39,6 +41,12 @@ if __name__ == "__main__":
     import json
 
     with open("output.json", "w") as f:
+        # drop the lines
+        for page in pages:
+            for block in page["blocks"]:
+                if "lines" in block:
+                    del block["lines"]
+
         json.dump(pages, f, indent=4)
     plot_blocks(input_path, pages, debug_path)
 
