@@ -24,7 +24,7 @@ We are responsible for:
     - Audio: (coming soon: wav, mp3)
     - Video: (coming soon: mp4)
     - Code: ipynb, (coming soon: py, js)
-    - Data interchange: csv (coming soon: json, yaml, toml)
+    - Data interchange: csv, json (coming soon: yaml, toml)
 - Content linking across files.
 - Suppport LLM integration for correct content parsing.
 - Task description for agent-oriented RAG strategies.
