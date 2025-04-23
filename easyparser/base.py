@@ -614,6 +614,8 @@ class ChunkGroup:
                 return chunks[idx]
             idx -= len(chunks)
 
+        raise IndexError("Index out of range")
+
     def __iter__(self):
         for chunks in self._chunks.values():
             yield from chunks
