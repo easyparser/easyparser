@@ -259,9 +259,6 @@ def parse_shape(
     return None
 
 
-def parse_shapes(shapes, parent_chunk, slide_width, slide_height, **kwargs): ...
-
-
 class PptxParser(BaseOperation):
 
     @classmethod

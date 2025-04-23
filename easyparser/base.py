@@ -52,6 +52,7 @@ class CType:
     Para = "para"
     List = "list"
     Table = "table"
+    TableRow = "tablerow"
     Header = "header"
     Figure = "figure"
     Code = "code"
@@ -353,6 +354,20 @@ class Chunk:
         if isinstance(self._child, Chunk):
             return self._child.id
 
+    def add_children(self, children: list["Chunk"]):
+        """Add children to the current chunk"""
+        if not children:
+            return
+
+        if self.child is None:
+            self.child = children[0]
+            children[0].parent = self
+
+        for idx, child in enumerate(children[1:], start=1):
+            child.parent = self
+            children[idx - 1].next = child
+            child.prev = children[idx - 1]
+
     def render(
         self,
         format: Literal["plain", "markdown", "2d", "html"] = "plain",
@@ -381,6 +396,10 @@ class Chunk:
                     separator = " "
                 elif child.ctype == "list":
                     separator = "\n"
+                elif child.ctype == "tablerow":
+                    separator = "\n"
+                elif not current:
+                    separator = ""
                 else:
                     separator = "\n\n"
 
@@ -428,6 +447,10 @@ class Chunk:
                     elif child.ctype == "list":
                         rendered_child = textwrap.indent(rendered_child, "  ")
                         separator = "\n"
+                    elif child.ctype == "tablerow":
+                        separator = "\n"
+                    elif not current:
+                        separator = ""
                     else:
                         separator = "\n\n"
 

@@ -19,7 +19,7 @@ We are responsible for:
 - Maintain sectional layout structure during parsing and chunking (*).
 - Supported formats (refer ... for suitable parsers for each format):
     - Text: html, md, txt, epub, latex, org, rtf, rst
-    - Office documents: pdf, docx, pptx (coming soon: xlsx)
+    - Office documents: pdf, docx, pptx, xlsx
     - Images: jpg, png
     - Audio: (coming soon: wav, mp3)
     - Video: (coming soon: mp4)
