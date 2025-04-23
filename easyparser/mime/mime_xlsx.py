@@ -5,7 +5,7 @@ from easyparser.base import Chunk, CType, Origin
 
 
 def as_root_chunk(path: str) -> Chunk:
-    """From a pdf file to a base chunk"""
+    """From a xlsx file to a base chunk"""
     path = str(Path(path).resolve())
     with open(path, "rb") as f:
         file_hash = hashlib.sha256(f.read()).hexdigest()

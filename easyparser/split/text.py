@@ -58,7 +58,7 @@ class ChunkByCharacters(BaseOperation):
     @classmethod
     def run(
         cls,
-        chunk: Chunk | ChunkGroup,
+        chunks: Chunk | ChunkGroup,
         chunk_size: int = 4000,
         chunk_overlap: int = 200,
         length_fn: Callable[[str], int] | None | str = word_len,
@@ -86,10 +86,9 @@ class ChunkByCharacters(BaseOperation):
                 f"({chunk_size}), should be smaller."
             )
 
-        if isinstance(chunk, Chunk):
-            chunk = ChunkGroup([chunk])
+        if isinstance(chunks, Chunk):
+            chunks = ChunkGroup([chunks])
 
-        separators = separators or _default_separators(chunk[0].text)
         if isinstance(length_fn, str):
             length = ChunkByCharacters._len_fns[length_fn]
         elif length_fn is None:
@@ -149,72 +148,68 @@ class ChunkByCharacters(BaseOperation):
             return final_chunks
 
         output = ChunkGroup()
-        for group_root, chunks in chunk.iter_groups():
-            result = []
-            for ch in chunks:
-                if not ch.text:
-                    result.append(ch)
-                    continue
+        for ch in chunks:
+            if isinstance(ch.content, str) and not ch.content:
+                output.append(ch)
+                continue
 
-                splitted_texts = _split_text(ch.text, separators)
-                if len(splitted_texts) == 1:
-                    # nothing to split, skip
-                    result.append(ch)
-                    continue
+            separators = separators or _default_separators(ch.text)
+            splitted_texts = _split_text(ch.content, separators)
+            if len(splitted_texts) == 1:
+                # nothing to split, skip
+                output.append(ch)
+                continue
 
-                # Note that the resulting chunks are split from the original chunk
-                metadata = copy.deepcopy(ch.metadata)
-                metadata["split"] = True
-
-                # Record history
-                history = copy.deepcopy(ch.history)
-                history.append(
-                    cls.name(
-                        chunk_size=chunk_size,
-                        chunk_overlap=chunk_overlap,
-                        keep_separator=keep_separator,
-                        is_separator_regex=is_separator_regex,
-                    )
+            # Record history
+            history = copy.deepcopy(ch.history)
+            history.append(
+                cls.name(
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    keep_separator=keep_separator,
+                    is_separator_regex=is_separator_regex,
                 )
+            )
 
-                splitted_chunks = [
-                    Chunk(
-                        mimetype=ch.mimetype,
-                        content=ch.content,
-                        text=text,
-                        origin=ch.origin,
-                        parent=ch.parent,  # the parent will be here to fast traveling
-                        metadata=metadata,
-                        history=history,
-                    )
-                    for text in splitted_texts
-                ]
+            splitted_chunks = [
+                Chunk(
+                    mimetype="text/plain",
+                    content=text,
+                    origin=ch.origin,
+                    parent=ch,
+                    history=history,
+                )
+                for text in splitted_texts
+            ]
 
-                # The last chunk will inherit the child
-                splitted_chunks[-1].child = ch.child
+            # Next and prev intra chunks
+            for idx, _c in enumerate(splitted_chunks[1:], start=1):
+                _c.prev = splitted_chunks[idx - 1]
+                splitted_chunks[idx - 1].next = _c
 
-                # The first chunk will inherit the parent
-                if ch.parent:
-                    ch.parent.child = splitted_chunks[0]
-
-                # Next and prev intra chunks
-                for idx, _c in enumerate(splitted_chunks[1:], start=1):
-                    _c.prev = splitted_chunks[idx - 1]
-                    splitted_chunks[idx - 1].next = _c
-
-                # Outside next and prev
-                if ch.prev:
-                    splitted_chunks[0].prev = ch.prev
-                    ch.prev.next = splitted_chunks[0]
-                if ch.next:
-                    splitted_chunks[-1].next = ch.next
-                    ch.next.prev = splitted_chunks[-1]
-
-                result.extend(splitted_chunks)
-
-            output.add_group(ChunkGroup(root=group_root, chunks=result))
-
-        if chunk.store:
-            output.attach_store(chunk.store)
+            # Return the first chunk
+            output.append(splitted_chunks[0])
 
         return output
+
+
+class ChunkJsonString(BaseOperation):
+    @classmethod
+    def run(
+        cls,
+        chunks: Chunk | ChunkGroup,
+        chunk_size: int = 4000,
+        chunk_overlap: int = 200,
+        length_fn: Callable[[str], int] | None | str = word_len,
+        **kwargs,
+    ):
+        return ChunkByCharacters.run(
+            chunks,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_fn=length_fn,
+            separators=["},", "],", "}", "]", ",", " "],
+            keep_separator="end",
+            is_separator_regex=False,
+            **kwargs,
+        )

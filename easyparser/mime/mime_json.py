@@ -1,23 +1,20 @@
 import hashlib
 from pathlib import Path
 
-from easyparser.base import Chunk, CType, Origin
+from easyparser.base import Chunk, Origin
 
 
 def as_root_chunk(path: str) -> Chunk:
-    """From a docx file to a base chunk"""
+    """From a json file to a base chunk"""
     path = str(Path(path).resolve())
     with open(path, "rb") as f:
         file_hash = hashlib.sha256(f.read()).hexdigest()
     chunk = Chunk(
-        mimetype=(
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ),
-        ctype=CType.Para,
+        mimetype="application/json",
         origin=Origin(location=path),
         metadata={
             "file_hash": file_hash,
         },
     )
-    chunk.id = f"docx_{hashlib.sha256(path.encode()).hexdigest()}"
+    chunk.id = f"json_{hashlib.sha256(path.encode()).hexdigest()}"
     return chunk
