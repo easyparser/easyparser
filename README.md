@@ -21,7 +21,7 @@ We are responsible for:
     - Text: html, md, txt, epub, latex, org, rtf, rst
     - Office documents: pdf, docx, pptx, xlsx
     - Images: jpg, png
-    - Audio: (coming soon: wav, mp3)
+    - Audio: wav, mp3
     - Video: (coming soon: mp4)
     - Code: ipynb, (coming soon: py, js)
     - Data interchange: csv, json yaml, toml
