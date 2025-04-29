@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+from easyparser.models import completion
 
 logger = logging.getLogger(__name__)
 
@@ -72,18 +73,6 @@ def use_vlm_or_not(shapes, slide_width, slide_height) -> bool:
     return weighted_std(x1s, weights) > 0.15
 
 
-def llm_caption(pil_image, gemini_api_key, gemini_model, prompt) -> str:
-    """Generate a caption for the image using Gemini LLM."""
-    from google import genai
-
-    client = genai.Client(api_key=gemini_api_key)
-    response = client.models.generate_content(
-        model=gemini_model or "gemini-2.0-flash",
-        contents=[pil_image, prompt],
-    )
-    return response.text or ""
-
-
 def parse_image(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chunk:
     """Parse image, graph, chart, or other visual element. Combine provided alt
     text with LLM captioning.
@@ -100,15 +89,14 @@ def parse_image(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chu
         origin=parent_chunk.origin,
     )
 
-    if llm_key := kwargs.get("gemini_api_key"):
+    if caption := kwargs.get("caption", False):
         pil_img = Image.open(io.BytesIO(shape.image.blob))
         try:
-            llm_description = llm_caption(
-                pil_img,
-                llm_key,
-                kwargs.get("gemini_model"),
+            llm_description = completion(
                 "Describe this image. If there are any text inside this image, "
                 "transcribe the text as closest as possible.",
+                attachments=[pil_img],
+                alias=caption if isinstance(caption, str) else None,
             )
         except Exception as e:
             logger.error(f"Error in LLM captioning: {e}")
@@ -265,8 +253,7 @@ class PptxParser(BaseOperation):
     def run(
         cls,
         chunk: Chunk | ChunkGroup,
-        gemini_api_key: str | None = None,
-        gemini_model: str | None = None,
+        caption: str | bool = False,
         **kwargs: Any,
     ) -> ChunkGroup:
         import pptx
@@ -286,7 +273,7 @@ class PptxParser(BaseOperation):
                 shapes = sorted(slide.shapes, key=attrgetter("top", "left"))
 
                 use_vlm = False
-                if gemini_api_key and use_vlm_or_not(
+                if caption and use_vlm_or_not(
                     shapes, pres.slide_width, pres.slide_height
                 ):
                     print(f"Using VLM for slide {page_num}")
@@ -297,11 +284,10 @@ class PptxParser(BaseOperation):
                         pdf = pdfium.PdfDocument(pdf_converted_path)
 
                     pil_image = pdf[page_num - 1].render().to_pil()
-                    caption = llm_caption(
-                        pil_image,
-                        gemini_api_key,
-                        gemini_model,
+                    caption = completion(
                         "Provide detailed description of this slide.",
+                        attachments=[pil_image],
+                        alias=caption if isinstance(caption, str) else None,
                     )
                     slide_chunk = Chunk(
                         mimetype=CType.Div,
@@ -330,8 +316,7 @@ class PptxParser(BaseOperation):
                             parent_chunk=slide_chunk,
                             slide_width=pres.slide_width,
                             slide_height=pres.slide_height,
-                            gemini_api_key=gemini_api_key,
-                            gemini_model=gemini_model,
+                            caption=caption,
                         )
                         if child is not None:
                             slide_children.append(child)
@@ -363,7 +348,7 @@ class PptxParser(BaseOperation):
                     slide_children[idx - 1].next = child
 
                 if not use_vlm:
-                    slide_chunk.text = f"**Slide {page_num}**{slide_chunk.render()}"
+                    slide_chunk.text = f"**Slide {page_num}**\n\n{slide_chunk.render()}"
 
                 if prev_slide is None:
                     mc.child = slide_chunk
@@ -382,4 +367,4 @@ class PptxParser(BaseOperation):
     @classmethod
     def py_dependency(cls) -> list[str]:
         """Return the list of Python dependencies required by this converter."""
-        return ["python-pptx", "google-genai", "Pillow", "pypdfium2", "numpy"]
+        return ["python-pptx", "Pillow", "pypdfium2", "numpy"]

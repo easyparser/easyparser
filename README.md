@@ -47,6 +47,11 @@ We are responsible for:
 
 (*) Due to the complexity and variety of how structures can be represented in different file types, there can be errors. `easyparser` treats this as best effort. Refer xxx for difficult cases. File an issue if you encounter a problem.
 
+## Installation
+
+- pip install easyparser
+- easyparser setup-llm
+
 ## Cookbook
 
 TBD.
