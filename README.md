@@ -47,10 +47,28 @@ We are responsible for:
 
 (*) Due to the complexity and variety of how structures can be represented in different file types, there can be errors. `easyparser` treats this as best effort. Refer xxx for difficult cases. File an issue if you encounter a problem.
 
-## Installation
+## Usage
 
-- pip install easyparser
-- easyparser setup-llm
+### Add LLM support
+
+By default, `easyparser` uses the `llm` ([repo](https://github.com/simonw/llm)) with
+alias `easyparser-llm` to interact with LLM. Please setup the desired LLM
+provider according to their docs, and set the alias `easyparser-llm` to that
+model. Example, using Gemini model (as of April 2025):
+
+```bash
+# Install the LLM gemini
+$ llm install llm-gemini
+
+# Set the Gemini API key
+$ llm keys set gemini
+
+# Alias LLM to 'easyparser-llm' (you can see other model ids by running `llm models`)
+$ llm aliases set easyparser-llm gemini-2.5-flash-preview-04-17
+
+# Check the LLM is working correctly
+$ llm -m easyparser-llm "Explain quantum mechanics in 100 words"
+```
 
 ## Cookbook
 

@@ -18,8 +18,8 @@ def get_model(alias: str | None = None):
         except llm.UnknownModelError as e:
             if alias == DEFAULT_LLM_ALIAS:
                 raise ValueError(
-                    "Can't find default model 'easyparser-llm'. Please run "
-                    "`easyparser setup-llm` for step-by-step setup."
+                    "Can't find default model 'easyparser-llm'. Please check the \"Add "
+                    'LLM support" section.'
                 ) from None
 
             raise ValueError(f"Model with alias '{alias}' not found.") from e
@@ -53,5 +53,5 @@ def completion(message: str, attachments=None, alias=None) -> str:
             )
 
     resp = model.prompt(message, attachments=processed_attachments)
-
-    return resp.text()
+    text = resp.text()
+    return text

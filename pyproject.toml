@@ -16,7 +16,7 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Development Status :: 2 - Pre-Alpha"
 ]
-dependencies = []
+dependencies = ["llm"]
 
 [project.optional-dependencies]
 dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine", "papermill"]

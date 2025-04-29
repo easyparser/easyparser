@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from easyparser.base import Chunk
 from easyparser.mime import mime_jpg
 from easyparser.parse.image import RapidOCRImageText
 
@@ -11,4 +12,4 @@ def test_parse_jpg():
     chunks = RapidOCRImageText.run(root)
     chunk = chunks[0]
     chunk.print_graph()
-    assert len(chunks) > 0
+    assert isinstance(chunk, Chunk)

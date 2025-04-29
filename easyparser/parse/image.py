@@ -1,8 +1,8 @@
 import logging
-import os
 from collections import defaultdict
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType, Origin
+from easyparser.models import completion
 
 logger = logging.getLogger(__name__)
 
@@ -13,26 +13,21 @@ class RapidOCRImageText(BaseOperation):
     def run(
         cls,
         chunk: Chunk | ChunkGroup,
-        gemini_api_key: str | None = None,
-        gemini_model: str | None = None,
+        caption: str | bool = False,
         **kwargs,
     ) -> ChunkGroup:
-        """Use RapidOCR do OCR and use Gemini API to transcribe table and figure.
+        """Use RapidOCR do OCR and use VLM to transcribe table and figure.
 
         Args:
-            gemini_api_key: if None, it will try to read from environment
-                variable `GEMINI_API_KEY`.
-            gemini_model: the supported Gemini model names are:
-                "gemini-2.0-flash", "gemini-2.5-pro-exp-03-25". If None,
-                use "gemini-2.0-flash" as default.
+            caption: whether to use VLM to transcribe table and figure. If True,
+                use the default VLM, if a string is provided, use the LLM with that
+                alias, if False, disable captioning. Defaults to False.
         """
         import cv2
         from rapid_layout import RapidLayout
         from rapid_layout.utils.post_prepross import compute_iou
         from rapidocr import RapidOCR
 
-        client = None
-        gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
         layout_engine = RapidLayout(model_type="doclayout_docstructbench")
         ocr_engine = None
 
@@ -63,25 +58,16 @@ class RapidOCRImageText(BaseOperation):
                         }
                     )
 
-            if vlm_mode and client is None:
-                if gemini_api_key is None:
-                    raise ValueError(
-                        "Please supply `gemini_api_key` or set `GEMINI_API_KEY`"
-                    )
-                from google import genai
-
-                client = genai.Client(api_key=gemini_api_key)
-
-            if vlm_mode and client is not None:
+            if vlm_mode and caption:
                 from PIL import Image
 
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 pil_img = Image.fromarray(img)
-                response = client.models.generate_content(
-                    model=gemini_model or "gemini-2.0-flash",
-                    contents=["Describe this image, in markdown format", pil_img],
+                mc.text = completion(
+                    "Describe this image, in markdown format",
+                    attachments=[pil_img],
+                    alias=caption if isinstance(caption, str) else None,
                 )
-                mc.text = response.text
                 output.append(mc)
                 continue
 
@@ -140,40 +126,32 @@ class RapidOCRImageText(BaseOperation):
 
             for parent_id in reversed(childs.keys()):
                 if id2chunk[parent_id].ctype == CType.Table:
-                    if client is None and gemini_api_key is not None:
-                        from google import genai
-
-                        client = genai.Client(api_key=gemini_api_key)
-                    if client is not None:
+                    if caption:
                         from PIL import Image
 
                         x1, y1, x2, y2 = id2chunk[parent_id].origin.location
                         pil_img = Image.fromarray(
                             img[int(y1) : int(y2), int(x1) : int(x2)]
                         )
-                        response = client.models.generate_content(
-                            model=gemini_model or "gemini-2.0-flash",
-                            contents=["Extract the table in markdown format", pil_img],
+                        id2chunk[parent_id].text = completion(
+                            "Extract the table in markdown format",
+                            attachments=[pil_img],
+                            alias=caption if isinstance(caption, str) else None,
                         )
-                        id2chunk[parent_id].text = response.text
                         continue
                 elif id2chunk[parent_id].ctype == CType.Figure:
-                    if client is None and gemini_api_key is not None:
-                        from google import genai
-
-                        client = genai.Client(api_key=gemini_api_key)
-                    if client is not None:
+                    if caption:
                         from PIL import Image
 
                         x1, y1, x2, y2 = id2chunk[parent_id].origin.location
                         pil_img = Image.fromarray(
                             img[int(y1) : int(y2), int(x1) : int(x2)]
                         )
-                        response = client.models.generate_content(
-                            model=gemini_model or "gemini-2.0-flash",
-                            contents=["Describe the image in markdown format", pil_img],
+                        id2chunk[parent_id].text = completion(
+                            "Describe the image in markdown format",
+                            attachments=[pil_img],
+                            alias=caption if isinstance(caption, str) else None,
                         )
-                        id2chunk[parent_id].text = response.text
                         continue
 
             output.append(mc)
@@ -187,6 +165,5 @@ class RapidOCRImageText(BaseOperation):
             "rapid-layout",
             "rapid_table",
             "opencv-python",
-            "google-genai",
             "pillow",
         ]
