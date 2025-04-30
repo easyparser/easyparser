@@ -31,7 +31,7 @@ def completion(message: str, attachments=None, alias=None) -> str:
     """Chat with a model"""
     model = get_model(alias)
     if attachments is None:
-        return model.prompt(message).text
+        return model.prompt(message).text()
 
     if attachments is not None and not isinstance(attachments, (list, tuple)):
         attachments = [attachments]
@@ -53,5 +53,4 @@ def completion(message: str, attachments=None, alias=None) -> str:
             )
 
     resp = model.prompt(message, attachments=processed_attachments)
-    text = resp.text()
-    return text
+    return resp.text()
