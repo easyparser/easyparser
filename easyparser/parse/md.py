@@ -222,7 +222,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
 
 class Markdown(BaseOperation):
     @classmethod
-    def run(cls, chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
+    def run(cls, chunks: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
         """Split large chunks of text into smaller chunks based on Markdown heading,
         where each chunk is not larger than a given size.
         """
@@ -230,13 +230,13 @@ class Markdown(BaseOperation):
         from tree_sitter import Language, Parser
 
         # Resolve chunk
-        if isinstance(chunk, Chunk):
-            chunk = ChunkGroup(chunks=[chunk])
+        if isinstance(chunks, Chunk):
+            chunks = ChunkGroup(chunks=[chunks])
 
         parser = Parser(Language(tree_sitter_markdown.language()))
 
         output = ChunkGroup()
-        for mc in chunk:
+        for mc in chunks:
             location = mc.origin.location
             with open(location) as f:
                 ct = f.read()
@@ -250,7 +250,7 @@ class Markdown(BaseOperation):
 
             ctb = ct.encode("utf-8")
             if not isinstance(ct, str):
-                output.add_group(ChunkGroup(root=mc))
+                output.append(mc)
                 continue
 
             tree = parser.parse(ctb)
@@ -259,7 +259,7 @@ class Markdown(BaseOperation):
             child = parse_tree_sitter_node(ts_root, ctb)
             mc.child = child
             child.parent = mc
-            output.add_group(ChunkGroup(root=mc))
+            output.append(mc)
 
         return output
 

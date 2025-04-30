@@ -182,6 +182,21 @@ class Chunk:
     def __repr__(self):
         return self.__str__()
 
+    def __iter__(self):
+        """Iterate chunk in reading order"""
+        # Yield current chunk first
+        yield self
+
+        # Then yield all the children
+        child = self.child
+        if child:
+            yield from child
+
+        # Then yield next chunk
+        next_chunk = self.next
+        if next_chunk:
+            yield from next_chunk
+
     @property
     def ctype(self):
         """Get the chunk type of the object"""
