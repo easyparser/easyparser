@@ -9,11 +9,13 @@ docx_path = str(Path(__file__).parent.parent / "assets" / "with_image.docx")
 
 
 def test_propositionizer():
+    # parse the file
     root = mime_docx.as_root_chunk(docx_path)
     chunks = PandocEngine.run(root)
     chunk = chunks[0]
 
-    temp = chunk.child.next.next.next.next.next.next.next
-    temp.next = None
+    # run propositionizer
+    temp = chunk.child.next.next.next.next.next.next.next.clone(next=None)
     output = Propositionizer.run(temp)
+
     assert isinstance(output[0], Chunk)

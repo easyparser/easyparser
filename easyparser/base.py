@@ -4,6 +4,7 @@ import logging
 import re
 import uuid
 from collections import defaultdict, deque
+from copy import deepcopy
 from typing import Any, Callable, Literal, get_type_hints
 
 logger = logging.getLogger(__name__)
@@ -478,7 +479,28 @@ class Chunk:
 
         return current
 
-    def asdict(self):
+    def asdict(self, relation_as_chunk: bool = False):
+        """Return dictionary representation of the chunk
+
+        Args:
+            relation_as_chunk: if True, then treat the parent, child, next, prev as
+                chunk, otherwise treat as id
+        """
+        if relation_as_chunk:
+            return {
+                "id": self.id,
+                "mimetype": self.mimetype,
+                "content": self.content,
+                "text": self.text,
+                "parent": self.parent,
+                "child": self.child,
+                "next": self.next,
+                "prev": self.prev,
+                "origin": self.origin.asdict() if self.origin else None,
+                "metadata": self.metadata,
+                "history": self._history,
+            }
+
         return {
             "id": self.id,
             "mimetype": self.mimetype,
@@ -490,7 +512,7 @@ class Chunk:
             "prev": self.prev_id,
             "origin": self.origin.asdict() if self.origin else None,
             "metadata": self.metadata,
-            "_history": self._history,
+            "history": self._history,
         }
 
     def save(self):
@@ -593,6 +615,23 @@ class Chunk:
             ids.extend(child.get_ids())
             child = child.next
         return ids
+
+    def clone(self, **kwargs) -> "Chunk":
+        """Create a deepcopy, replace infor with what supplied inside **kwargs"""
+        d = self.asdict(relation_as_chunk=True)
+        for key in kwargs.keys():
+            if key not in d:
+                raise ValueError(f"Invalid key: {key}")
+
+        d.pop("id")
+        d = deepcopy(d)
+        d.update(kwargs)
+        ch = Chunk(**d)
+
+        if self.store:
+            ch.store = self.store
+
+        return ch
 
 
 class ChunkGroup:

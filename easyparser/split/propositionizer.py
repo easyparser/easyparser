@@ -5,7 +5,7 @@ import re
 from easyparser.base import BaseOperation, Chunk, ChunkGroup
 from easyparser.models import completion
 
-CAPTION_PROMPT = """Decompose the "Content" into clear and simple propositions, ensuring they are interpretable out of context.
+CAPTION_PROMPT = """Decompose the "Input" into clear and simple propositions, ensuring they are interpretable out of context.
 1. Split compound sentence into simple sentences. Maintain the original phrasing from the input
 whenever possible.
 2. For any named entity that is accompanied by additional descriptive information, separate this
@@ -15,8 +15,7 @@ and replacing pronouns (e.g., "it", "he", "she", "they", "this", "that") with th
 entities they refer to.
 4. Present the results as a list of strings, formatted in JSON.
 
-Input: Title: ¯Eostre. Section: Theories and interpretations, Connection to Easter Hares. Content:
-The earliest evidence for the Easter Hare (Osterhase) was recorded in south-west Germany in
+Input: "The earliest evidence for the Easter Hare (Osterhase) was recorded in south-west Germany in
 1678 by the professor of medicine Georg Franck von Franckenau, but it remained unknown in
 other parts of Germany until the 18th century. Scholar Richard Sermon writes that "hares were
 frequently seen in gardens in spring, and thus may have served as a convenient explanation for the
@@ -43,7 +42,7 @@ Britain and America.", "The custom of the Easter Hare/Rabbit evolved into the Ea
 Britain and America." ]
 ```
 
-Input: {chunk_text}
+Input: {text}
 Output:"""
 
 
@@ -93,9 +92,7 @@ def get_proposition(chunk: Chunk, model: str | None = None) -> list[Chunk]:
         list of propositions, each is a Chunk
     """
     if chunk.text:
-        props = completion_json(
-            CAPTION_PROMPT.format(chunk_text=chunk.text), alias=model
-        )
+        props = completion_json(CAPTION_PROMPT.format(text=chunk.text), alias=model)
         propositions = [
             Chunk(mimetype="text/plain", text=prop, metadata={"originals": [chunk.id]})
             for prop in props
@@ -103,9 +100,7 @@ def get_proposition(chunk: Chunk, model: str | None = None) -> list[Chunk]:
     else:
         content = chunk.content
         if isinstance(content, str) and content:
-            props = completion_json(
-                CAPTION_PROMPT.format(chunk_text=content, alias=model)
-            )
+            props = completion_json(CAPTION_PROMPT.format(text=content, alias=model))
             propositions = [
                 Chunk(
                     mimetype="text/plain", text=prop, metadata={"originals": [chunk.id]}
