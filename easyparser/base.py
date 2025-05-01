@@ -5,7 +5,7 @@ import re
 import uuid
 from collections import defaultdict, deque
 from copy import deepcopy
-from typing import Any, Callable, Literal, get_type_hints
+from typing import Any, Callable, Generator, Literal, get_type_hints
 
 logger = logging.getLogger(__name__)
 
@@ -183,20 +183,27 @@ class Chunk:
     def __repr__(self):
         return self.__str__()
 
-    def __iter__(self):
-        """Iterate chunk in reading order"""
+    def walk(self, depth: int = 0) -> Generator[tuple[int, "Chunk"], None, None]:
+        """Iterate depth and chunk in reading order, depth first, breadth second
+
+        Args:
+            depth: the current depth of the chunk in the tree
+
+        Yields:
+            tuple[int, Chunk]: the depth and the chunk object
+        """
         # Yield current chunk first
-        yield self
+        yield (depth, self)
 
         # Then yield all the children
         child = self.child
         if child:
-            yield from child
+            yield from child.walk(depth=depth + 1)
 
-        # Then yield next chunk
+        # Then yield next chunk (at the same level)
         next_chunk = self.next
         if next_chunk:
-            yield from next_chunk
+            yield from next_chunk.walk(depth=depth)
 
     @property
     def ctype(self):

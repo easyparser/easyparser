@@ -15,7 +15,7 @@ def test_propositionizer():
     chunk = chunks[0]
 
     # run propositionizer
-    temp = chunk.child.next.next.next.next.next.next.next.clone(next=None)
+    temp = chunk.child.next.next.next.next.next.next.next.clone()
     output = Propositionizer.run(temp)
 
     assert isinstance(output[0], Chunk)
