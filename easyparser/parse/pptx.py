@@ -96,7 +96,7 @@ def parse_image(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chu
                 "Describe this image. If there are any text inside this image, "
                 "transcribe the text as closest as possible.",
                 attachments=[pil_img],
-                alias=caption if isinstance(caption, str) else None,
+                model=caption if isinstance(caption, str) else None,
             )
         except Exception as e:
             logger.error(f"Error in LLM captioning: {e}")
@@ -287,7 +287,7 @@ class PptxParser(BaseOperation):
                     caption = completion(
                         "Provide detailed description of this slide.",
                         attachments=[pil_image],
-                        alias=caption if isinstance(caption, str) else None,
+                        model=caption if isinstance(caption, str) else None,
                     )
                     slide_chunk = Chunk(
                         mimetype=CType.Div,

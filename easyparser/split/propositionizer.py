@@ -74,7 +74,8 @@ def parse_json_from_text(text) -> list | dict | None:
 
 
 def completion_json(message: str, alias=None) -> list:
-    output = completion(message, alias=alias)
+    """Run LLM and extract JSON from the triple backticks"""
+    output = completion(message, model=alias)
     output_list = parse_json_from_text(output)
     if isinstance(output_list, list):
         return output_list
@@ -94,7 +95,9 @@ def get_proposition(chunk: Chunk, model: str | None = None) -> list[Chunk]:
     if chunk.text:
         props = completion_json(CAPTION_PROMPT.format(text=chunk.text), alias=model)
         propositions = [
-            Chunk(mimetype="text/plain", text=prop, metadata={"originals": [chunk.id]})
+            Chunk(
+                mimetype="text/plain", content=prop, metadata={"originals": [chunk.id]}
+            )
             for prop in props
         ]
     else:
@@ -103,7 +106,9 @@ def get_proposition(chunk: Chunk, model: str | None = None) -> list[Chunk]:
             props = completion_json(CAPTION_PROMPT.format(text=content, alias=model))
             propositions = [
                 Chunk(
-                    mimetype="text/plain", text=prop, metadata={"originals": [chunk.id]}
+                    mimetype="text/plain",
+                    content=prop,
+                    metadata={"originals": [chunk.id]},
                 )
                 for prop in props
             ]
@@ -126,6 +131,9 @@ class Propositionizer(BaseOperation):
         cls, chunks: Chunk | ChunkGroup, model: str | None = None, **kwargs
     ) -> ChunkGroup:
         """Build propositions from the chunk.
+
+        Suggest to flatten the chunks first before running this operation so that each
+        chunk has good enough context for LLM to generate the propositions.
 
         Ref: Dense X Retrieval: What Retrieval Granularity Should We Use?
         """

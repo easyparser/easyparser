@@ -66,7 +66,7 @@ class RapidOCRImageText(BaseOperation):
                 mc.text = completion(
                     "Describe this image, in markdown format",
                     attachments=[pil_img],
-                    alias=caption if isinstance(caption, str) else None,
+                    model=caption if isinstance(caption, str) else None,
                 )
                 output.append(mc)
                 continue
@@ -136,7 +136,7 @@ class RapidOCRImageText(BaseOperation):
                         id2chunk[parent_id].text = completion(
                             "Extract the table in markdown format",
                             attachments=[pil_img],
-                            alias=caption if isinstance(caption, str) else None,
+                            model=caption if isinstance(caption, str) else None,
                         )
                         continue
                 elif id2chunk[parent_id].ctype == CType.Figure:
@@ -150,7 +150,7 @@ class RapidOCRImageText(BaseOperation):
                         id2chunk[parent_id].text = completion(
                             "Describe the image in markdown format",
                             attachments=[pil_img],
-                            alias=caption if isinstance(caption, str) else None,
+                            model=caption if isinstance(caption, str) else None,
                         )
                         continue
 

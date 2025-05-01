@@ -27,11 +27,11 @@ def get_model(alias: str | None = None):
     return _models[alias]
 
 
-def completion(message: str, attachments=None, alias=None) -> str:
+def completion(message: str, attachments=None, system=None, model=None) -> str:
     """Chat with a model"""
-    model = get_model(alias)
+    model_obj = get_model(model)
     if attachments is None:
-        return model.prompt(message).text()
+        return model_obj.prompt(message, system=system).text()
 
     if attachments is not None and not isinstance(attachments, (list, tuple)):
         attachments = [attachments]
@@ -52,5 +52,5 @@ def completion(message: str, attachments=None, alias=None) -> str:
                 " Please provide llm.Attachment or PIL.Image."
             )
 
-    resp = model.prompt(message, attachments=processed_attachments)
+    resp = model_obj.prompt(message, attachments=processed_attachments, system=system)
     return resp.text()
