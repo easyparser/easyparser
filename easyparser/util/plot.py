@@ -54,11 +54,12 @@ def plot_pdf(pdf_path: str, chunks: ChunkGroup, output_path: str):
 if __name__ == "__main__":
     import sys
 
-    from easyparser.mime import mime_pdf
+    from easyparser.controller import Controller
     from easyparser.parser import DoclingPDF, FastPDF, UnstructuredPDF
 
+    ctrl = Controller()
     pdf_path = sys.argv[1]
-    root = mime_pdf.as_root_chunk(pdf_path)
+    root = ctrl.as_root_chunk(pdf_path)
 
     methods = [FastPDF, UnstructuredPDF, DoclingPDF]
     for method in methods:

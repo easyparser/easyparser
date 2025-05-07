@@ -7,7 +7,7 @@ from pathlib import Path
 from gradio_pdf import PDF
 
 import gradio as gr
-from easyparser.mime import mime_pdf
+from easyparser.controller import Controller
 from easyparser.parser import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
 from easyparser.util.plot import plot_pdf
 
@@ -20,6 +20,7 @@ METHOD_MAP = {
 METHOD_LIST = list(METHOD_MAP.keys())
 TMP_DIR = Path("/tmp/visualize")
 TMP_DIR.mkdir(exist_ok=True)
+ctrl = Controller()
 
 
 def format_chunk(chunk):
@@ -40,7 +41,7 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
     start = time.time()
     debug_image_paths = []
 
-    root = mime_pdf.as_root_chunk(pdf_path)
+    root = ctrl.as_root_chunk(pdf_path)
     method = METHOD_MAP[method]
 
     if method == FastPDF:
