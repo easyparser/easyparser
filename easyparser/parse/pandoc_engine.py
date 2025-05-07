@@ -788,6 +788,8 @@ class PandocEngine(BaseOperation):
         It is most suitable for text-heavy files while preserving document structure
         information, like Markdown, LaTeX or Word.
         """
+        import pypandoc
+
         if isinstance(chunk, Chunk):
             chunk = ChunkGroup(chunks=[chunk])
 

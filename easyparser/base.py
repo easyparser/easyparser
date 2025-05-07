@@ -28,10 +28,12 @@ class Origin:
         self,
         source_id: str = "",
         location: Any = None,
+        protocol: str = "",
         metadata: dict | None = None,
     ):
         self.source_id = source_id
         self.location = location
+        self.protocol = protocol
         self.metadata = metadata
 
     def asdict(self):
@@ -39,7 +41,14 @@ class Origin:
             "source_id": self.source_id,
             "location": self.location,
             "metadata": self.metadata,
+            "protocol": self.protocol,
         }
+
+    def __str__(self):
+        return f"Origin(protocol={self.protocol}, location={self.location})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class CType:
@@ -137,7 +146,7 @@ class Chunk:
 
     def __init__(
         self,
-        mimetype: str,
+        mimetype: str | None = None,
         ctype: CType | str = CType.Inline,
         content: Any = None,
         text: str = "",
@@ -377,8 +386,11 @@ class Chunk:
         if isinstance(self._child, Chunk):
             return self._child.id
 
-    def add_children(self, children: list["Chunk"]):
+    def add_children(self, children: "list[Chunk] | Chunk"):
         """Add children to the current chunk"""
+        if isinstance(children, Chunk):
+            children = [children]
+
         if not children:
             return
 
