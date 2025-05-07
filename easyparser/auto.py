@@ -35,6 +35,7 @@ def parse(
             try:
                 parser.run(chunk)
             except Exception as e:
+                chunk = ctrl.as_root_chunk(path)
                 logger.warning(f"Parser {parser} failed for {path}: {e}")
                 continue
             break

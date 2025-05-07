@@ -170,7 +170,7 @@ class Chunk:
         self._next = next
         self._prev = prev
         self.origin = origin
-        self.metadata = metadata
+        self.metadata = metadata or {}
 
         # internal use
         self._content_length: int | None = None
@@ -634,6 +634,45 @@ class Chunk:
             ids.extend(child.get_ids())
             child = child.next
         return ids
+
+    def find(self, id: str | None = None, ctype: str | None = None) -> "Chunk | None":
+        """Find the chunk by id or ctype
+
+        Args:
+            id: the id of the chunk to find
+            ctype: the ctype of the chunk to find
+        """
+        if id is not None and self.id == id:
+            return self
+
+        if ctype is not None and self.ctype == ctype:
+            return self
+
+        child = self.child
+        while child:
+            found = child.find(id=id, ctype=ctype)
+            if found:
+                return found
+            child = child.next
+
+        return None
+
+    def find_all(self, ctype: str | None = None) -> list["Chunk"]:
+        """Find all the chunks by ctype
+
+        Args:
+            ctype: the ctype of the chunk to find
+        """
+        result = []
+        if ctype is not None and self.ctype == ctype:
+            result.append(self)
+
+        child = self.child
+        while child:
+            result.extend(child.find_all(ctype=ctype))
+            child = child.next
+
+        return result
 
     def clone(self, **kwargs) -> "Chunk":
         """Create a deepcopy, replace infor with what supplied inside **kwargs"""

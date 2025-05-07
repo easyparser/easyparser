@@ -48,6 +48,7 @@ class DirectoryParser(BaseOperation):
                     try:
                         parser.run(child)
                     except Exception as e:
+                        child = ctrl.as_root_chunk(_p)
                         logger.warning(f"Parser {parser} failed for {_p}: {e}")
                         continue
                     break
