@@ -1,1 +1,1 @@
-class Loader: ...  # noqa: E701
+class Parser: ...  # noqa: E701

@@ -17,7 +17,7 @@ try:
 except ImportError:
     magic = None
 
-from easyparser.base import Chunk, CType, Origin
+from easyparser.base import BaseOperation, Chunk, CType, Origin
 
 if hasattr(mimetypes, "guess_file_type"):
     _mimetypes_guess_file = mimetypes.guess_file_type
@@ -146,7 +146,7 @@ class Controller:
         mimetype: str | None = None,
         strict: bool = False,
         **kwargs,
-    ) -> Generator["Controller", None, None]:
+    ) -> Generator[BaseOperation, None, None]:
         """For a given file or folder, iterate over eligible parsers
 
         There can be multiple parsers for a given file type, so if 1 parser fails,
