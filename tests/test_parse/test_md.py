@@ -2,7 +2,7 @@ from pathlib import Path
 
 from easyparser.base import Chunk
 from easyparser.mime import mime_md
-from easyparser.parse.md import Markdown
+from easyparser.parser.md import Markdown
 
 md_path1 = str(Path(__file__).parent.parent / "assets" / "lz.md")
 

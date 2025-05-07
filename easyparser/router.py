@@ -74,18 +74,18 @@ class FileCoordinator:
         self._parsers: dict[str, list] = self._load_parsers()
 
     def _load_parsers(self) -> dict[str, list]:
-        from easyparser.parse.audio import AudioWhisperParser
-        from easyparser.parse.dict_list import JsonParser, TomlParser, YamlParser
-        from easyparser.parse.directory import DirectoryParser
-        from easyparser.parse.html import PandocHtmlParser
-        from easyparser.parse.image import RapidOCRImageText
-        from easyparser.parse.md import Markdown
-        from easyparser.parse.pandoc_engine import PandocEngine
-        from easyparser.parse.pdf import FastPDF
-        from easyparser.parse.pptx import PptxParser
-        from easyparser.parse.text import TextParser
-        from easyparser.parse.video import VideoWhisperParser
-        from easyparser.parse.xlsx import XlsxOpenpyxlParser
+        from easyparser.parser.audio import AudioWhisperParser
+        from easyparser.parser.dict_list import JsonParser, TomlParser, YamlParser
+        from easyparser.parser.directory import DirectoryParser
+        from easyparser.parser.html import PandocHtmlParser
+        from easyparser.parser.image import RapidOCRImageText
+        from easyparser.parser.md import Markdown
+        from easyparser.parser.pandoc_engine import PandocEngine
+        from easyparser.parser.pdf import FastPDF
+        from easyparser.parser.pptx import PptxParser
+        from easyparser.parser.text import TextParser
+        from easyparser.parser.video import VideoWhisperParser
+        from easyparser.parser.xlsx import XlsxOpenpyxlParser
 
         return {
             MimeType.text: [TextParser],

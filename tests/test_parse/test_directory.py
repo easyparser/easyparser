@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from easyparser.base import Chunk
-from easyparser.parse.directory import DirectoryParser
+from easyparser.parser.directory import DirectoryParser
 from easyparser.router import FileCoordinator
 
 path = str(Path(__file__).parent.parent)

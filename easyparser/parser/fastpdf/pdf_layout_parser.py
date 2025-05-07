@@ -8,7 +8,7 @@ from pdftext.pdf.chars import deduplicate_chars, get_chars
 from pdftext.pdf.pages import assign_scripts, get_lines, get_spans
 from rapid_layout import RapidLayout, VisLayout
 
-from easyparser.parse.fastpdf.util import (
+from easyparser.parser.fastpdf.util import (
     fix_unicode_encoding,
     get_overlap_ratio,
     scale_bbox,

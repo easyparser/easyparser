@@ -2,7 +2,7 @@ from pathlib import Path
 
 from easyparser.base import Chunk
 from easyparser.mime import mime_html
-from easyparser.parse.html import PandocHtmlParser
+from easyparser.parser.html import PandocHtmlParser
 
 html_path = str(Path(__file__).parent.parent / "assets" / "long.html")
 

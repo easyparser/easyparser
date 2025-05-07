@@ -2,7 +2,7 @@ from pathlib import Path
 
 from easyparser.base import Chunk
 from easyparser.mime import mime_json
-from easyparser.parse.dict_list import JsonParser, TomlParser, YamlParser
+from easyparser.parser.dict_list import JsonParser, TomlParser, YamlParser
 from easyparser.split.text import ChunkJsonString
 
 json_path = str(Path(__file__).parent.parent / "assets" / "long.json")

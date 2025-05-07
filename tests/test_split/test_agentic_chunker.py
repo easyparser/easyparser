@@ -2,7 +2,7 @@ from pathlib import Path
 
 from easyparser.base import Chunk
 from easyparser.mime import mime_docx
-from easyparser.parse.pandoc_engine import PandocEngine
+from easyparser.parser.pandoc_engine import PandocEngine
 from easyparser.split.agentic_chunker import AgenticChunker
 from easyparser.split.split import FlattenToMarkdown
 

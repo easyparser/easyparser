@@ -5,8 +5,8 @@ import pymupdf4llm
 from img2table.document import PDF
 from plot import plot_blocks
 
-from easyparser.parse.fastpdf.pdf_heuristic_parser import pages_to_markdown
-from easyparser.parse.fastpdf.pdf_layout_parser import partition_pdf_layout
+from easyparser.parser.fastpdf.pdf_heuristic_parser import pages_to_markdown
+from easyparser.parser.fastpdf.pdf_layout_parser import partition_pdf_layout
 
 if __name__ == "__main__":
     executor = ProcessPoolExecutor()

@@ -8,7 +8,7 @@ from gradio_pdf import PDF
 
 import gradio as gr
 from easyparser.mime import mime_pdf
-from easyparser.parse import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
+from easyparser.parser import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
 from easyparser.util.plot import plot_pdf
 
 METHOD_MAP = {

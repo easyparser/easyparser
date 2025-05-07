@@ -2,7 +2,7 @@ from pathlib import Path
 
 from easyparser.base import Chunk
 from easyparser.mime import mime_xlsx
-from easyparser.parse.xlsx import XlsxOpenpyxlParser
+from easyparser.parser.xlsx import XlsxOpenpyxlParser
 
 asset_folder = Path(__file__).parent.parent / "assets"
 multi_sheets = str(asset_folder / "multi_sheets.xlsx")

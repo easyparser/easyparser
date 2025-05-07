@@ -55,7 +55,7 @@ if __name__ == "__main__":
     import sys
 
     from easyparser.mime import mime_pdf
-    from easyparser.parse import DoclingPDF, FastPDF, UnstructuredPDF
+    from easyparser.parser import DoclingPDF, FastPDF, UnstructuredPDF
 
     pdf_path = sys.argv[1]
     root = mime_pdf.as_root_chunk(pdf_path)

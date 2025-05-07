@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from easyparser.base import Chunk
-from easyparser.parse.pptx import PptxParser
+from easyparser.parser.pptx import PptxParser
 from easyparser.router import FileCoordinator
 
 pptx_path = str(Path(__file__).parent.parent / "assets" / "normal.pptx")

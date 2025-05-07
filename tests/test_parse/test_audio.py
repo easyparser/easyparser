@@ -2,7 +2,7 @@ from pathlib import Path
 
 from easyparser.base import Chunk
 from easyparser.mime import mime_mp3, mime_wav
-from easyparser.parse.audio import AudioWhisperParser
+from easyparser.parser.audio import AudioWhisperParser
 
 mp3_path = str(Path(__file__).parent.parent / "assets" / "jfk_apollo_49.mp3")
 wav_path = str(Path(__file__).parent.parent / "assets" / "jfk_apollo_49.wav")

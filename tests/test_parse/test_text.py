@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from easyparser.base import Chunk
-from easyparser.parse.text import TextParser
+from easyparser.parser.text import TextParser
 from easyparser.router import FileCoordinator
 
 file_path = str(Path(__file__).parent.parent / "assets" / "long.txt")

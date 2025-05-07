@@ -2,7 +2,7 @@ from pathlib import Path
 
 from easyparser.base import Chunk
 from easyparser.mime import mime_mp4
-from easyparser.parse.video import VideoWhisperParser
+from easyparser.parser.video import VideoWhisperParser
 
 mp4_path = str(Path(__file__).parent.parent / "assets" / "jfk_30.mp4")
 
