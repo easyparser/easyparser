@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup
-from easyparser.router import get_coordinators
+from easyparser.controller import Controller, get_controller
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ class DirectoryParser(BaseOperation):
     def run(
         cls,
         chunks: Chunk | ChunkGroup,
-        ctrls: list | None = None,
+        ctrl: Controller | None = None,
         **kwargs,
     ) -> ChunkGroup:
         """Parse a directory recursively.
@@ -31,8 +31,8 @@ class DirectoryParser(BaseOperation):
             if not path.is_dir():
                 raise ValueError(f"Path {root.origin.location} is not a directory.")
 
-            if not ctrls:
-                ctrls = get_coordinators()
+            if not ctrl:
+                ctrl = get_controller()
 
             children = []
             for _p in path.glob("*"):
@@ -41,9 +41,9 @@ class DirectoryParser(BaseOperation):
                         # Skip .git directories
                         continue
 
-                child = ctrls[-1].as_root_chunk(_p)
+                child = ctrl.as_root_chunk(_p)
                 attempted = 0
-                for parser in ctrls[-1].iter_parser(_p):
+                for parser in ctrl.iter_parser(_p):
                     attempted += 1
                     try:
                         parser.run(child)

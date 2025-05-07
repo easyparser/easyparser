@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import mimetypes
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
@@ -25,6 +26,31 @@ else:
 
 
 logger = logging.getLogger(__name__)
+
+
+def guess_mimetype(path, default: str = "application/octet-stream") -> str:
+    """Guess mimetype based on file path, prioritize magika > magic > mimetypes.
+
+    Args:
+        path: the path to the file
+        default: the mimetype to return if the mimetype cannot be guessed
+
+    Returns:
+        The mimetype of the file.
+    """
+    if Path(path).is_dir():
+        return MimeType.directory
+
+    if _m:
+        return _m.identify_path(path).output.mime_type
+    if magic:
+        return magic.from_file(path, mime=True)
+
+    guessed = _mimetypes_guess_file(path)[0]
+    if guessed:
+        return guessed
+
+    return default
 
 
 class MimeType:
@@ -61,7 +87,7 @@ class MimeType:
     directory = "inode/directory"
 
 
-class FileCoordinator:
+class Controller:
     """Coordinator to parse from raw "binary" into chunk
 
     Functions:
@@ -69,9 +95,15 @@ class FileCoordinator:
         - Iterate over the parsers
     """
 
-    def __init__(self, **extras):
-        self._extras = extras
+    def __init__(
+        self, extras: dict[str, list] | None = None, callbacks: list | None = None
+    ):
+        self._extras = extras or {}
+        self._callbacks = callbacks or []
         self._parsers: dict[str, list] = self._load_parsers()
+
+        self._temp_extras = []
+        self._temp_callbacks = []
 
     def _load_parsers(self) -> dict[str, list]:
         from easyparser.parser.audio import AudioWhisperParser
@@ -114,7 +146,7 @@ class FileCoordinator:
         mimetype: str | None = None,
         strict: bool = False,
         **kwargs,
-    ) -> Generator[dict, None, None]:
+    ) -> Generator["Controller", None, None]:
         """For a given file or folder, iterate over eligible parsers
 
         There can be multiple parsers for a given file type, so if 1 parser fails,
@@ -126,6 +158,28 @@ class FileCoordinator:
             mimetype = self.guess_mimetype(path)
 
         _miss = True
+
+        # Prioritize the temporary callbacks and extras
+        if self._temp_callbacks:
+            for _temp_callbacks in self._temp_callbacks:
+                for callback in _temp_callbacks:
+                    matched = callback(path, mimetype)
+                    if matched:
+                        _miss = False
+                        yield matched
+
+        if self._temp_extras:
+            for _temp_extras in self._temp_extras:
+                if mimetype in _temp_extras:
+                    _miss = False
+                    yield from _temp_extras[mimetype]
+
+        for callback in self._callbacks:
+            matched = callback(path, mimetype)
+            if matched:
+                _miss = False
+                yield matched
+
         if mimetype in self._extras:
             _miss = False
             yield from self._extras[mimetype]
@@ -153,19 +207,7 @@ class FileCoordinator:
         Returns:
             The mimetype of the file.
         """
-        if Path(path).is_dir():
-            return MimeType.directory
-
-        if _m:
-            return _m.identify_path(path).output.mime_type
-        if magic:
-            return magic.from_file(path, mime=True)
-
-        guessed = _mimetypes_guess_file(path)[0]
-        if guessed:
-            return guessed
-
-        return default
+        return guess_mimetype(path, default)
 
     def as_root_chunk(self, path: str | Path, mimetype: str | None = None) -> Chunk:
         """Convert a file or directory to a chunk."""
@@ -198,22 +240,50 @@ class FileCoordinator:
             chunk.id = f"dir_{chunk.id}"
             return chunk
 
+    def register(
+        self, extras: dict[str, list] | None = None, callbacks: list | None = None
+    ) -> None:
+        """Add extra parsers to the controller"""
+        if extras:
+            for key, value in extras.items():
+                if key in self._extras:
+                    self._extras[key].extend(value)
+                else:
+                    self._extras[key] = value
 
-_coordinators = []
+        if callbacks:
+            self._callbacks.extend(callbacks)
+
+    @contextmanager
+    def temporary(
+        self, extras: dict[str, list] | None = None, callbacks: list | None = None
+    ):
+        """Temporarily add extra parsers to the controller"""
+        if extras:
+            self._temp_extras.append(extras)
+        if callbacks:
+            self._temp_callbacks.append(callbacks)
+
+        yield
+
+        if extras:
+            self._temp_extras.remove(extras)
+        if callbacks:
+            self._temp_callbacks.remove(callbacks)
 
 
-def register_coordinator(coordinator: FileCoordinator) -> FileCoordinator:
-    """Register a router."""
-    global _coordinators
-
-    _coordinators.append(coordinator)
-    return coordinator
+_ctrl = None
 
 
-def get_coordinators() -> list:
-    global _coordinators
+def get_controller() -> Controller:
+    """Get the controller instance"""
+    global _ctrl
+    if _ctrl is None:
+        _ctrl = Controller()
+    return _ctrl
 
-    if not _coordinators:
-        _coordinators = [FileCoordinator()]
 
-    return _coordinators
+def set_controller(ctrl: Controller) -> None:
+    """Set the controller instance"""
+    global _ctrl
+    _ctrl = ctrl
