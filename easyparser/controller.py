@@ -148,8 +148,11 @@ class Controller:
 
             chunk = Chunk(
                 ctype=CType.Div,
-                mimetype=mimetype,
-                origin=Origin(location=path_str, protocol="file"),
+                content=f"File {path_str}",
+                mimetype="text/plain",
+                origin=Origin(
+                    location=path_str, protocol="file", metadata={"mimetype": mimetype}
+                ),
             )
             chunk.id = file_hash
 
@@ -158,6 +161,8 @@ class Controller:
         else:
             chunk = Chunk(
                 ctype=CType.Div,
+                content=f"Directory {path_str}",
+                mimetype="text/plain",
                 origin=Origin(location=path_str, protocol="directory"),
             )
             chunk.id = f"dir_{chunk.id}"

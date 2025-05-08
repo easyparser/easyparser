@@ -10,7 +10,7 @@ except ImportError:
     pass
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
-from easyparser.mime.guess import guess_mimetype
+from easyparser.mime import guess_mimetype
 
 logger = logging.getLogger(__name__)
 

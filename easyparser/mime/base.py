@@ -125,9 +125,6 @@ class MimeManager:
                 metadata["y1"] = 0
                 metadata["y2"] = 0
 
-        if metadata:
-            metadata["mimetype"] = mimetype
-
         return metadata
 
 

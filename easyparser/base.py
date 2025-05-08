@@ -1,4 +1,3 @@
-import builtins
 import inspect
 import logging
 import re
@@ -916,8 +915,8 @@ class BaseOperation:
             # skip non-builtin types
             type_anno = type_hints.get(name)
             type_name = getattr(type_anno, "__name__", str(type_anno))
-            if not hasattr(builtins, type_name):
-                continue
+            # if not hasattr(builtins, type_name):
+            #     continue
 
             param_info = {
                 "type": type_name,
