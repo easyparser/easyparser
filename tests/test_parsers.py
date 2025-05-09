@@ -15,7 +15,7 @@ from easyparser.parser.text import TextParser
 from easyparser.parser.video import VideoWhisperParser
 from easyparser.parser.xlsx import XlsxOpenpyxlParser
 
-asset_folder = Path(__file__).parent.parent / "assets"
+asset_folder = Path(__file__).parent / "assets"
 
 pdf_path1 = str(asset_folder / "short.pdf")
 pdf_path2 = str(asset_folder / "short_image.pdf")

@@ -104,6 +104,7 @@ def parse_image(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chu
 
     try:
         # https://github.com/scanny/python-pptx/pull/512#issuecomment-1713100069
+        # Get image description (if alt text is provided)
         alt_text = shape._element._nvXxPr.cNvPr.attrib.get("descr", "")
     except Exception:
         pass
@@ -256,6 +257,26 @@ class PptxParser(BaseOperation):
         caption: str | bool = False,
         **kwargs: Any,
     ) -> ChunkGroup:
+        """Parses PowerPoint (.pptx) files into structured text representation.
+
+        Extracts content from slides including text and optionally generates visual
+        descriptions using a vision language model for image-heavy slides. Preserves
+        slide structure, relationships, and slide notes.
+
+        Note:
+            1. Requires python-pptx, Pillow, pypdfium2, and numpy dependencies.
+            2. When visual captioning is enabled, converts relevant slides to PDF for
+                image processing.
+
+        Args:
+            chunk: A Chunk or ChunkGroup object containing the PowerPoint file to parse
+            caption: If True, uses default VLM to caption visual slides; if string,
+                specifies the VLM model to use
+
+        Returns:
+            ChunkGroup: A structured representation of the PowerPoint content,
+                including text, images, and slide notes.
+        """
         import pptx
         import pypdfium2 as pdfium
 
@@ -301,6 +322,7 @@ class PptxParser(BaseOperation):
                     )
                 else:
                     slide_chunk = Chunk(
+                        content=f"**Slide {page_num}**",
                         mimetype=CType.Div,
                         ctype=CType.Div,
                         origin=mc.origin,
@@ -333,7 +355,7 @@ class PptxParser(BaseOperation):
                             mimetype="text/plain",
                             ctype=CType.Para,
                             origin=slide_chunk.origin,
-                            content=f"**Slide note**: {text_frame}",
+                            content=f"Slide note: {text_frame}",
                         )
                         slide_children.append(child)
                         child.parent = slide_chunk
