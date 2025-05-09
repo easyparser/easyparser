@@ -69,6 +69,9 @@ class CType:
     Code = "code"
     Div = "div"  # logically organized (e.g. a pptx slide)
 
+    # File-level and above chunk
+    Root = "root"
+
     __available_types = None
 
     @classmethod

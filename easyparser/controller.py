@@ -147,7 +147,7 @@ class Controller:
                 file_hash = hashlib.sha256(f.read()).hexdigest()
 
             chunk = Chunk(
-                ctype=CType.Div,
+                ctype=CType.Root,
                 content=f"File {path_str}",
                 mimetype="text/plain",
                 origin=Origin(
@@ -160,7 +160,7 @@ class Controller:
 
         else:
             chunk = Chunk(
-                ctype=CType.Div,
+                ctype=CType.Root,
                 content=f"Directory {path_str}",
                 mimetype="text/plain",
                 origin=Origin(location=path_str, protocol="directory"),
