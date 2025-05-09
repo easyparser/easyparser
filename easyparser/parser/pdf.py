@@ -294,22 +294,22 @@ class UnstructuredPDF(BaseOperation):
         "Table",
     }
     _label_mapping = {
-        "Title": "heading",
-        "Checked": "checkbox",
-        "Unchecked": "checkbox",
-        "CheckBoxChecked": "checkbox",
-        "CheckBoxUnchecked": "checkbox",
-        "RadioButtonChecked": "checkbox",
-        "RadioButtonUnchecked": "checkbox",
-        "Header": "heading",
-        "Headline": "heading",
-        "Subheadline": "heading",
-        "Section-header": "heading",
-        "Image": "image",
-        "Picture": "image",
-        "Figure": "image",
-        "Formula": "formula",
-        "Table": "table",
+        "Title": CType.Header,
+        "Checked": CType.Inline,
+        "Unchecked": CType.Inline,
+        "CheckBoxChecked": CType.Inline,
+        "CheckBoxUnchecked": CType.Inline,
+        "RadioButtonChecked": CType.Inline,
+        "RadioButtonUnchecked": CType.Inline,
+        "Header": CType.Header,
+        "Headline": CType.Header,
+        "Subheadline": CType.Header,
+        "Section-header": CType.Header,
+        "Image": CType.Figure,
+        "Picture": CType.Figure,
+        "Figure": CType.Figure,
+        "Formula": CType.Inline,
+        "Table": CType.Table,
     }
 
     @classmethod
@@ -384,24 +384,18 @@ class UnstructuredPDF(BaseOperation):
 
                 result.append(
                     Chunk(
+                        ctype=cls._label_mapping.get(e.category, "text"),
                         mimetype=mimetype,
                         content=content,
                         text=text,
                         parent=pdf_root,
                         origin=origin,
-                        metadata=mime_pdf.ChildMetadata(
-                            label=cls._label_mapping.get(e.category, "text")
-                        ).asdict(languages=e.metadata.languages),
+                        metadata={"lang": e.metadata.languages},
                     )
                 )
 
-            for idx, _c in enumerate(result[1:], start=1):
-                _c.prev = result[idx - 1]
-                result[idx - 1].next = _c
-
-            if result:
-                pdf_root.child = result[0]
-            output.add_group(ChunkGroup(chunks=result, root=pdf_root))
+            pdf_root.add_children(result)
+            output.append(pdf_root)
 
         return output
 

@@ -50,9 +50,8 @@ def test_sycamore():
 def test_unstructured():
     root = ctrl.as_root_chunk(pdf_path1)
     chunks = UnstructuredPDF.run(root)
-    assert len(chunks) > 0
-    assert root.id in chunks.groups
-    assert isinstance(chunks[0], Chunk)
+    chunk = chunks[0]
+    assert isinstance(chunk, Chunk)
 
 
 def test_docling():
