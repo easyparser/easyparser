@@ -1,4 +1,6 @@
-from easyparser.base import BaseOperation, Chunk, ChunkGroup
+import io
+
+from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
 from easyparser.mime import mime_pdf
 
 
@@ -27,13 +29,12 @@ class SycamorePDF(BaseOperation):
     }
     image_types = {"Formula", "Image", "table", "Table"}
     _label_mapping = {
-        "Page-header": "heading",
-        "Section-header": "heading",
-        "Title": "heading",
-        "Formula": "formula",
-        "Image": "image",
-        "table": "table",
-        "Table": "table",
+        "Page-header": CType.Header,
+        "Section-header": CType.Header,
+        "Title": CType.Header,
+        "Image": CType.Figure,
+        "table": CType.Table,
+        "Table": CType.Table,
     }
 
     @classmethod
@@ -64,6 +65,7 @@ class SycamorePDF(BaseOperation):
             extract_images: If true, crops each region identified as an image.
         """
         import sycamore
+        from sycamore.data.element import ImageElement
         from sycamore.transforms.partition import ArynPartitioner
 
         partitioner = ArynPartitioner(
@@ -102,6 +104,18 @@ class SycamorePDF(BaseOperation):
                 if e.type in SycamorePDF.text_types:
                     mimetype = "text/plain"
                     content = e.text_representation
+                elif isinstance(e, ImageElement):
+                    pil_img = e.as_image()
+                    if pil_img is None:
+                        if not text:
+                            continue
+                        mimetype = "text/plain"
+                        content = text
+                    else:
+                        mimetype = "image/png"
+                        bytes_io = io.BytesIO()
+                        pil_img.save(bytes_io, format="PNG")
+                        content = bytes_io.getvalue()
                 elif e.type in SycamorePDF.image_types:
                     mimetype = "image/png"
                     content = e.binary_representation
@@ -110,32 +124,16 @@ class SycamorePDF(BaseOperation):
 
                 r = Chunk(
                     mimetype=mimetype,
+                    ctype=cls._label_mapping.get(e.type, "text"),
                     content=content,
                     text=text,
                     parent=pdf_root,
                     origin=origin,
-                    metadata=mime_pdf.ChildMetadata(
-                        label=cls._label_mapping.get(e.type, "text"),
-                    ).asdict(**e.properties),
-                )
-                r.history.append(
-                    cls.name(
-                        use_partitioning_service=use_partitioning_service,
-                        extract_table_structure=extract_table_structure,
-                        use_ocr=use_ocr,
-                        extract_images=extract_images,
-                        **kwargs,
-                    )
                 )
                 result.append(r)
 
-            for idx, _c in enumerate(result[1:], start=1):
-                _c.prev = result[idx - 1]
-                result[idx - 1].next = _c
-
-            if result:
-                pdf_root.child = result[0]
-            output.add_group(ChunkGroup(chunks=result, root=pdf_root))
+            pdf_root.add_children(result)
+            output.append(pdf_root)
 
         return output
 
