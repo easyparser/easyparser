@@ -1,6 +1,6 @@
 import json
 
-from easyparser.base import BaseOperation, Chunk, ChunkGroup
+from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
 
 
 class JsonParser(BaseOperation):
@@ -14,7 +14,13 @@ class JsonParser(BaseOperation):
         output = ChunkGroup()
         for chunk in chunks:
             with open(chunk.origin.location) as f:
-                chunk.content = repr(json.load(f))
+                content = repr(json.load(f))
+            ch = Chunk(
+                ctype=CType.Div,
+                content=content,
+                mimetype="text/plain",
+            )
+            chunk.add_children(ch)
             output.append(chunk)
 
         return output
@@ -36,7 +42,13 @@ class TomlParser(BaseOperation):
         output = ChunkGroup()
         for chunk in chunks:
             with open(chunk.origin.location) as f:
-                chunk.content = repr(tomllib.load(f))
+                content = repr(tomllib.load(f))
+            ch = Chunk(
+                ctype=CType.Div,
+                content=content,
+                mimetype="text/plain",
+            )
+            chunk.add_children(ch)
             output.append(chunk)
 
         return output
@@ -64,7 +76,13 @@ class YamlParser(BaseOperation):
         output = ChunkGroup()
         for chunk in chunks:
             with open(chunk.origin.location) as f:
-                chunk.content = repr(yaml.safe_load(f))
+                content = repr(yaml.safe_load(f))
+            ch = Chunk(
+                ctype=CType.Div,
+                content=content,
+                mimetype="text/plain",
+            )
+            chunk.add_children(ch)
             output.append(chunk)
 
         return output
