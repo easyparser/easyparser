@@ -1,4 +1,8 @@
-"""Convert any document to Markdown."""
+"""PDF heuristic parser for extracting text and images.
+Loosely based on
+https://github.com/superlinear-ai/raglite/blob/main/src/raglite/_markdown.py
+(using pdftext and pdfium for metadata extraction from PDF).
+"""
 
 import re
 from concurrent.futures import ProcessPoolExecutor
@@ -174,7 +178,7 @@ def parsed_pdf_to_markdown(
                     all(line["md"]["bold"] for line in block["lines"])
                     and len(block_text.strip()) < HEADER_MAX_LENGTH
                 )
-                median_font_size = np.max(
+                block_font_size = np.max(
                     np.round(
                         [
                             extract_font_size(span)
@@ -185,7 +189,7 @@ def parsed_pdf_to_markdown(
                 ).astype(int)
                 is_heading_block = (
                     is_heading_block
-                    and median_font_size >= mode_font_size
+                    and block_font_size >= mode_font_size
                     and block_text.strip()
                 )
 

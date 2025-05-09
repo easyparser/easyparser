@@ -50,7 +50,7 @@ def _default_separators(text):
 
 def split_text(
     text: str,
-    length,
+    length_fn,
     chunk_size,
     separators: list[str],
     keep_separator,
@@ -81,12 +81,12 @@ def split_text(
 
     # process each split
     for split in splits:
-        if length(split) < chunk_size:
+        if length_fn(split) < chunk_size:
             good_splits.append(split)
         else:
             if good_splits:
                 merged_text = merge_splits(
-                    good_splits, _separator, chunk_size, 0, length
+                    good_splits, _separator, chunk_size, 0, length_fn
                 )
                 final_chunks.extend(merged_text)
                 good_splits = []
@@ -96,7 +96,7 @@ def split_text(
             else:
                 other_chunks = split_text(
                     split,
-                    length,
+                    length_fn,
                     chunk_size,
                     new_separators,
                     keep_separator,
@@ -105,7 +105,7 @@ def split_text(
                 final_chunks.extend(other_chunks)
 
     if good_splits:
-        merged_text = merge_splits(good_splits, _separator, chunk_size, 0, length)
+        merged_text = merge_splits(good_splits, _separator, chunk_size, 0, length_fn)
         final_chunks.extend(merged_text)
 
     return final_chunks

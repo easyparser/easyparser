@@ -1,4 +1,6 @@
 import io
+import json
+import re
 
 import llm
 from PIL import Image
@@ -27,7 +29,9 @@ def get_model(alias: str | None = None):
     return _models[alias]
 
 
-def completion(message: str, attachments=None, system=None, model=None) -> str:
+def completion(
+    message: str, attachments=None, system=None, model=None, schema=None
+) -> str:
     """Chat with a model"""
     model_obj = get_model(model)
     if attachments is None:
@@ -52,5 +56,35 @@ def completion(message: str, attachments=None, system=None, model=None) -> str:
                 " Please provide llm.Attachment or PIL.Image."
             )
 
-    resp = model_obj.prompt(message, attachments=processed_attachments, system=system)
+    resp = model_obj.prompt(
+        message, attachments=processed_attachments, system=system, schema=schema
+    )
     return resp.text()
+
+
+def parse_json_from_text(text) -> list | dict | None:
+    """Parses a JSON object from a text string that is surrounded by code fences (```)
+
+    Assumes the content within the code fences is JSON, even if the fence doesn't
+    explicitly state "json".
+
+    Args:
+        text: the input text string potentially containing a JSON object within
+    code fences.
+
+    Returns:
+        A Python dictionary or list representing the parsed JSON object if found,
+        or None if no valid JSON object within code fences is found.
+        Returns the raw string if it's not a valid JSON.
+    """
+    rematch = re.search(r"```.*?\n(.*?)\n```", text, re.DOTALL)
+
+    if rematch:
+        json_string = rematch.group(1).strip()
+        try:
+            return json.loads(json_string)
+        except json.JSONDecodeError as e:
+            print("Error decoding JSON:", e, "in text:", json_string)
+            return None
+
+    return None

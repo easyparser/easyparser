@@ -3,7 +3,7 @@ import json
 import re
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup
-from easyparser.models import completion
+from easyparser.models import completion, parse_json_from_text
 
 CAPTION_PROMPT = """Decompose the "Input" into clear and simple propositions, ensuring they are interpretable out of context.
 1. Split compound sentence into simple sentences. Maintain the original phrasing from the input
@@ -44,33 +44,6 @@ Britain and America." ]
 
 Input: {text}
 Output:"""
-
-
-def parse_json_from_text(text) -> list | dict | None:
-    """Parses a JSON object from a text string that is surrounded by code fences (```)
-
-    Assumes the content within the code fences is JSON, even if the fence doesn't
-    explicitly state "json".
-
-    Args:
-        text: the input text string potentially containing a JSON object within
-    code fences.
-
-    Returns:
-        A Python dictionary or list representing the parsed JSON object if found,
-        or None if no valid JSON object within code fences is found.
-        Returns the raw string if it's not a valid JSON.
-    """
-    rematch = re.search(r"```.*?\n(.*?)\n```", text, re.DOTALL)
-
-    if rematch:
-        json_string = rematch.group(1).strip()
-        try:
-            return json.loads(json_string)
-        except json.JSONDecodeError:
-            return None
-
-    return None
 
 
 def completion_json(message: str, alias=None) -> list:

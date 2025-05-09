@@ -213,14 +213,12 @@ class FastPDF(BaseOperation):
                     )
                     text = block["text"]
                     r = Chunk(
+                        ctype="text",
                         mimetype=mimetype,
                         content=text,
                         text=text,
                         parent=pdf_root,
                         origin=origin,
-                        metadata=mime_pdf.ChildMetadata(
-                            label=block["type"],
-                        ).asdict(),
                     )
                     r.history.append(
                         cls.name(
@@ -234,9 +232,8 @@ class FastPDF(BaseOperation):
                 _c.prev = result[idx - 1]
                 result[idx - 1].next = _c
 
-            if result:
-                pdf_root.child = result[0]
-            output.add_group(ChunkGroup(chunks=result, root=pdf_root))
+            pdf_root.add_children(result)
+            output.append(pdf_root)
 
         return output
 
