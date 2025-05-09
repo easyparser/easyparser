@@ -407,23 +407,23 @@ class UnstructuredPDF(BaseOperation):
 class DoclingPDF(BaseOperation):
     supported_mimetypes = ["application/pdf"]
     _label_mapping = {  # taken from docling.types.doc.labels.DocItemLabel
-        "caption": "text",
-        "footnote": "text",
-        "formula": "formula",
-        "list_item": "text",
-        "page_footer": "text",
-        "page_header": "text",
-        "picture": "image",
-        "section_header": "heading",
-        "table": "table",
-        "text": "text",
-        "title": "heading",
-        "document_index": "text",
-        "code": "text",
-        "checkbox_selected": "checkbox",
-        "checkbox_unselected": "checkbox",
-        "form": "text",
-        "key_value_region": "text",
+        "caption": CType.Para,
+        "footnote": CType.Para,
+        "formula": CType.Inline,
+        "list_item": CType.List,
+        "page_footer": CType.Para,
+        "page_header": CType.Para,
+        "picture": CType.Figure,
+        "section_header": CType.Header,
+        "table": CType.Table,
+        "text": CType.Para,
+        "title": CType.Header,
+        "document_index": CType.Para,
+        "code": CType.Code,
+        "checkbox_selected": CType.List,
+        "checkbox_unselected": CType.List,
+        "form": CType.Div,
+        "key_value_region": CType.Inline,
     }
 
     @classmethod
@@ -535,35 +535,17 @@ class DoclingPDF(BaseOperation):
                 t, b = prov.bbox.t, prov.bbox.b
                 y1, y2 = (h - t) / h, (h - b) / h
                 c = Chunk(
+                    ctype=cls._label_mapping.get(e.label, CType.Para),
                     mimetype=mimetype,
                     content=content,
                     text=text,
                     parent=parent_chunk_stacks[-1],
                     origin=mime_pdf.to_origin(pdf_root, x1, x2, y1, y2, page_no),
-                    metadata=mime_pdf.ChildMetadata(
-                        label=cls._label_mapping.get(e.label, "text")
-                    ).asdict(),
-                )
-                c.history.append(
-                    cls.name(
-                        do_ocr=do_ocr,
-                        do_table_structure=do_table_structure,
-                        generate_picture_images=generate_picture_images,
-                        images_scale=images_scale,
-                        num_thread=num_thread,
-                        device=device,
-                        **kwargs,
-                    )
                 )
                 result.append(c)
 
-            for idx, _c in enumerate(result[1:], start=1):
-                _c.prev = result[idx - 1]
-                result[idx - 1].next = _c
-
-            if result:
-                pdf_root.child = result[0]
-            output.add_group(ChunkGroup(chunks=result, root=pdf_root))
+            pdf_root.add_children(result)
+            output.append(pdf_root)
 
         return output
 

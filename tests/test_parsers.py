@@ -57,9 +57,8 @@ def test_unstructured():
 def test_docling():
     root = ctrl.as_root_chunk(pdf_path1)
     chunks = DoclingPDF.run(root)
-    assert len(chunks) > 0
-    assert root.id in chunks.groups
-    assert isinstance(chunks[0], Chunk)
+    chunk = chunks[0]
+    assert isinstance(chunk, Chunk)
 
 
 def test_fastpdf():
