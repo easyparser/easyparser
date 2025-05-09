@@ -60,16 +60,17 @@ class RapidOCRImageText(BaseOperation):
                         }
                     )
 
-            if vlm_mode and caption:
-                from PIL import Image
+            if vlm_mode:
+                if caption:
+                    from PIL import Image
 
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                pil_img = Image.fromarray(img)
-                mc.text = completion(
-                    "Describe this image, in markdown format",
-                    attachments=[pil_img],
-                    model=caption if isinstance(caption, str) else None,
-                )
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    pil_img = Image.fromarray(img)
+                    mc.text = completion(
+                        "Describe this image, in markdown format",
+                        attachments=[pil_img],
+                        model=caption if isinstance(caption, str) else None,
+                    )
                 output.append(mc)
                 continue
 
