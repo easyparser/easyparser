@@ -18,7 +18,7 @@ class VideoWhisperParser(BaseOperation):
         if model_name not in cls._loaded_models:
             import whisper
 
-            logger.info(f"Loading Whisper model: {model_name}")
+            logger.debug(f"Loading Whisper model: {model_name}")
             cls._loaded_models[model_name] = whisper.load_model(model_name)
         return cls._loaded_models[model_name]
 
@@ -32,7 +32,7 @@ class VideoWhisperParser(BaseOperation):
             fd, temp_audio_path = tempfile.mkstemp(suffix=".mp3")
             os.close(fd)
 
-            logger.info(f"Extracting audio from video: {video_file_path}")
+            logger.debug(f"Extracting audio from video: {video_file_path}")
             audio = AudioSegment.from_file(video_file_path)
             audio.export(temp_audio_path, format="mp3")
 
@@ -107,8 +107,7 @@ class VideoWhisperParser(BaseOperation):
             for mc in chunk:
                 # Get file info
                 file_path = mc.origin.location
-
-                logger.info(f"Transcribing video file: {file_path}")
+                logger.info(f"Parsing {file_path}")
 
                 # Perform transcription - extract audio and use the cached model
                 result = cls.transcribe_video(file_path, model_name, options)

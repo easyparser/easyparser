@@ -38,6 +38,7 @@ class RapidOCRImageText(BaseOperation):
         output = ChunkGroup()
         for mc in chunk:
             img = cv2.imread(mc.origin.location)
+            logger.info(f"Parsing {mc.origin.location}")
 
             # Detect layout
             lboxes, lconfs, lclasses, _ = layout_engine(img)

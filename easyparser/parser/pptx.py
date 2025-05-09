@@ -286,6 +286,7 @@ class PptxParser(BaseOperation):
 
         output = ChunkGroup()
         for mc in chunk:
+            logging.info(f"Parsing {mc.origin.location}")
             pres = pptx.Presentation(mc.origin.location)
             pdf_converted_path, temp_dir, pdf = "", "", None
             prev_slide = None

@@ -16,7 +16,7 @@ class AudioWhisperParser(BaseOperation):
         if model_name not in cls._loaded_models:
             import whisper
 
-            logger.info(f"Loading Whisper model: {model_name}")
+            logger.debug(f"Loading Whisper model: {model_name}")
             cls._loaded_models[model_name] = whisper.load_model(model_name)
         return cls._loaded_models[model_name]
 
@@ -69,7 +69,7 @@ class AudioWhisperParser(BaseOperation):
                 # Get file info
                 file_path = mc.origin.location
 
-                logger.info(f"Transcribing audio file: {file_path}")
+                logger.info(f"Parsing {file_path}")
 
                 # Perform transcription - using the cached model
                 result = cls.transcribe_audio(file_path, model_name, options)

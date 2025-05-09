@@ -104,6 +104,7 @@ class XlsxOpenpyxlParser(BaseOperation):
 
         output = ChunkGroup()
         for root in chunks:
+            logger.info(f"Parsing {root.origin.location}")
             workbook = openpyxl.load_workbook(root.origin.location)
             sheet_chunks = []
             for sheet in workbook.worksheets:

@@ -1,7 +1,10 @@
 import csv
 import io
+import logging
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+
+logger = logging.getLogger(__name__)
 
 
 class CsvParser(BaseOperation):
@@ -20,6 +23,7 @@ class CsvParser(BaseOperation):
 
         output = ChunkGroup()
         for root in chunks:
+            logger.info(f"Parsing {root.origin.location}")
             # Create a table chunk as the main container
             table_chunk = Chunk(
                 mimetype="plain/text",

@@ -64,6 +64,7 @@ class MimeType:
     xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
     # Data interchange
+    csv = "text/csv"
     json = "application/json"
     toml = "application/toml"
     yaml = "application/yaml"
@@ -71,8 +72,9 @@ class MimeType:
 
     # Sound & video
     wav = "audio/wav"
+    wav_x = "audio/x-wav"
     mp3 = "audio/mpeg"
-    mp4 = "audio/mp4"
+    mp4 = "video/mp4"
 
     # Archive
     # zip = "application/zip"

@@ -27,6 +27,7 @@ class DirectoryParser(BaseOperation):
 
         output = ChunkGroup()
         for root in chunks:
+            logger.info(f"Parsing {root.origin.location}")
             path = Path(root.origin.location)
             if not path.is_dir():
                 raise ValueError(f"Path {root.origin.location} is not a directory.")

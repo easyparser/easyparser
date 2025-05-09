@@ -795,6 +795,7 @@ class PandocEngine(BaseOperation):
 
         output = ChunkGroup()
         for root in chunk:
+            logger.info(f"Parsing {root.origin.location}")
             fp = root.origin.location
 
             media = tempfile.TemporaryDirectory(prefix="chunking_pandoc_media")

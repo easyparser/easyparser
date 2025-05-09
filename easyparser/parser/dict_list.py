@@ -1,6 +1,9 @@
 import json
+import logging
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+
+logger = logging.getLogger(__name__)
 
 
 class JsonParser(BaseOperation):
@@ -13,6 +16,7 @@ class JsonParser(BaseOperation):
 
         output = ChunkGroup()
         for chunk in chunks:
+            logger.info(f"Parsing {chunk.origin.location}")
             with open(chunk.origin.location) as f:
                 content = repr(json.load(f))
             ch = Chunk(
@@ -41,6 +45,7 @@ class TomlParser(BaseOperation):
 
         output = ChunkGroup()
         for chunk in chunks:
+            logger.info(f"Parsing {chunk.origin.location}")
             with open(chunk.origin.location) as f:
                 content = repr(tomllib.load(f))
             ch = Chunk(
@@ -75,6 +80,7 @@ class YamlParser(BaseOperation):
 
         output = ChunkGroup()
         for chunk in chunks:
+            logger.info(f"Parsing {chunk.origin.location}")
             with open(chunk.origin.location) as f:
                 content = repr(yaml.safe_load(f))
             ch = Chunk(

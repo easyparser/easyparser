@@ -1,7 +1,10 @@
 import io
+import logging
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
 from easyparser.mime import mime_pdf
+
+logger = logging.getLogger(__name__)
 
 
 class SycamorePDF(BaseOperation):
@@ -81,6 +84,7 @@ class SycamorePDF(BaseOperation):
 
         output = ChunkGroup()
         for pdf_root in chunk:
+            logger.info(f"Parsing {pdf_root.origin.location}")
             result = []
             if pdf_root.origin is None:
                 raise ValueError("Origin is not defined")
@@ -173,6 +177,7 @@ class FastPDF(BaseOperation):
 
         output = ChunkGroup()
         for pdf_root in chunk:
+            logger.info(f"Parsing {pdf_root.origin.location}")
             result = []
             if pdf_root.origin is None:
                 raise ValueError("Origin is not defined")
@@ -338,6 +343,7 @@ class UnstructuredPDF(BaseOperation):
 
         output = ChunkGroup()
         for pdf_root in chunk:
+            logger.info(f"Parsing {pdf_root.origin.location}")
             result = []
             if pdf_root.origin is None:
                 raise ValueError("Origin is not defined")
@@ -490,6 +496,7 @@ class DoclingPDF(BaseOperation):
 
         output = ChunkGroup()
         for pdf_root in chunk:
+            logger.info(f"Parsing {pdf_root.origin.location}")
             result = []
             doc = docling_converter.convert(pdf_root.origin.location).document
             parent_chunk_stacks = []

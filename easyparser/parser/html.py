@@ -157,9 +157,9 @@ def preprocess_html(input_file, output_file):
                 cell.clear()
                 cell.string = text
 
-    logger.info(f"Removed {tables_removed} empty tables")
-    logger.info(f"Unpacked {tables_unpacked} single-cell tables")
-    logger.info(f"Converted {tables_to_lists} single-column tables to lists")
+    logger.debug(f"Removed {tables_removed} empty tables")
+    logger.debug(f"Unpacked {tables_unpacked} single-cell tables")
+    logger.debug(f"Converted {tables_to_lists} single-column tables to lists")
 
     # Clean up spans and divs
     for tag in soup.find_all(["span", "div"]):
@@ -188,6 +188,7 @@ class PandocHtmlParser(BaseOperation):
 
         output = ChunkGroup()
         for root in chunk:
+            logger.info(f"Parsing {root.origin.location}")
             temp_file_path = tempfile.mktemp(suffix=".html")
             try:
                 # Preprocess the HTML file

@@ -237,6 +237,7 @@ class Markdown(BaseOperation):
 
         output = ChunkGroup()
         for mc in chunks:
+            logger.info(f"Parsing {mc.origin.location}")
             location = mc.origin.location
             with open(location) as f:
                 ct = f.read()
