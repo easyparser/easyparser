@@ -381,6 +381,22 @@ class Chunk:
         return child
 
     @property
+    def first_sibling(self) -> "Chunk | None":
+        """Get the first sibling object"""
+        sibling = self
+        while sibling and sibling.prev:
+            sibling = sibling.prev
+        return sibling
+
+    @property
+    def last_sibling(self) -> "Chunk | None":
+        """Get the last sibling object"""
+        sibling = self
+        while sibling and sibling.next:
+            sibling = sibling.next
+        return sibling
+
+    @property
     def child_id(self) -> str | None:
         if isinstance(self._child, str):
             return self._child
