@@ -4,7 +4,9 @@ import re
 import uuid
 from collections import defaultdict, deque
 from copy import deepcopy
-from typing import Any, Callable, Generator, Literal, get_type_hints
+from typing import Any, Callable, Generator, Literal, get_type_hints, overload
+
+from easyparser.mime import get_mime_manager
 
 logger = logging.getLogger(__name__)
 
@@ -402,15 +404,29 @@ class Chunk:
             children[idx - 1].next = child
             child.prev = children[idx - 1]
 
+    @overload
+    def render(self, format: Literal["plain", "markdown", "2d"] = "plain") -> str: ...
+
+    @overload
+    def render(self, format: Literal["multi"]) -> list[str | dict]: ...
+
     def render(
         self,
-        format: Literal["plain", "markdown", "2d", "html"] = "plain",
+        format: Literal["plain", "markdown", "2d", "multi"] = "plain",
         **kwargs,
-    ) -> str:
+    ) -> str | list[str | dict]:
         """Select the executor type to render the object
 
         Args:
-            format: the format of the output. Defaults to "text".
+            format: the format of the output. Defaults to "plain".
+                - plain: plain text, no formatting
+                - markdown: plain text with markdown formatting
+                - 2d: 2d string representation
+                - multi: multi-modal representation, a list of dictionaries
+
+        Returns:
+            str if format is "plain", "markdown" or 2d; list of dict if format
+                is "multi".
         """
         if format == "plain":
             current = self.text
@@ -439,6 +455,8 @@ class Chunk:
 
                 current += separator + rendered_child
                 child = child.next
+
+            return current
         elif format == "markdown":
             import textwrap
 
@@ -490,12 +508,73 @@ class Chunk:
 
                     current += separator + rendered_child
                     child = child.next
+
+            return current
+        elif format == "multi":
+            current_content = ""
+            if self.content is not None:  # if None, just ignore and go to child chunk
+                if isinstance(self.content, str):
+                    current_content = self.content
+                elif isinstance(self.content, bytes):
+                    current_content = {
+                        "mimetype": self.mimetype,
+                        "text": self.summary or self.text,
+                    }
+                    try:
+                        mime_manager = get_mime_manager()
+                        obj = mime_manager.to_python(self)
+                        if obj is None:
+                            raise ValueError("Cannot convert to python object")
+                        current_content["content"] = obj
+                        current_content["processed"] = True
+                    except Exception as e:
+                        current_content["content"] = self.content
+                        current_content["processed"] = False
+                        logger.warning(
+                            f"Cannot convert content to python object: {e}\n"
+                            f"Mimetype: {self.mimetype}, Id: {self.id}"
+                        )
+
+            mixed_list = [current_content]
+            child = self.child
+            while child:
+                child_content: list = child.render(format=format, **kwargs)
+                if child.ctype == CType.Inline:
+                    separator = " "
+                elif child.ctype == CType.List:
+                    separator = "\n"
+                elif not current_content:
+                    separator = ""
+                else:
+                    separator = "\n\n"
+
+                mixed_list.append(separator)
+                mixed_list.extend(child_content)
+                child = child.next
+
+            if not mixed_list:
+                return []
+
+            # Collapse consecutive strings into one
+            result = []
+            current_strings = []
+            for item in mixed_list:
+                if isinstance(item, str):
+                    current_strings.append(item)
+                else:
+                    if current_strings:
+                        result.append("".join(current_strings))
+                        current_strings = []
+                    result.append(item)
+
+            if current_strings:
+                result.append("".join(current_strings))
+
+            return result
         else:
             raise NotImplementedError(
                 f"Render as `format={format}` is not yet supported"
             )
-
-        return current
 
     def asdict(self, relation_as_chunk: bool = False):
         """Return dictionary representation of the chunk
