@@ -4,6 +4,7 @@ from typing import Callable, List, Optional
 from tqdm import tqdm
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup
+from easyparser.mime import MimeType
 from easyparser.models import completion, parse_json_from_text
 from easyparser.split.split import _non_whitespace_separators, split_text
 from easyparser.split.utils import word_len
@@ -51,7 +52,7 @@ def _get_cumulative_token_counts(splits: List[str], length_fn: Callable) -> List
 
 
 def _is_mime_text(chunk: Chunk) -> bool:
-    return chunk.mimetype == "text/plain" and chunk.content
+    return chunk.mimetype == MimeType.text and chunk.content
 
 
 class LumberChunker(BaseOperation):

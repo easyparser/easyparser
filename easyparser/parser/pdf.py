@@ -2,7 +2,7 @@ import io
 import logging
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
-from easyparser.mime import mime_pdf
+from easyparser.mime import MimeType, mime_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -106,14 +106,14 @@ class SycamorePDF(BaseOperation):
 
                 text = e.text_representation.strip() if e.text_representation else ""
                 if e.type in SycamorePDF.text_types:
-                    mimetype = "text/plain"
+                    mimetype = MimeType.text
                     content = e.text_representation
                 elif isinstance(e, ImageElement):
                     pil_img = e.as_image()
                     if pil_img is None:
                         if not text:
                             continue
-                        mimetype = "text/plain"
+                        mimetype = MimeType.text
                         content = text
                     else:
                         mimetype = "image/png"
@@ -200,7 +200,7 @@ class FastPDF(BaseOperation):
                 for block in page["blocks"]:
                     # only support text elements for now
                     # TODO: add support for other types (image)
-                    mimetype = "text/plain"
+                    mimetype = MimeType.text
                     x1, y1, x2, y2 = block["bbox"]
 
                     origin = mime_pdf.to_origin(
@@ -375,7 +375,7 @@ class UnstructuredPDF(BaseOperation):
                 else:
                     text = e.text
                 if e.category in UnstructuredPDF.text_types:
-                    mimetype = "text/plain"
+                    mimetype = MimeType.text
                     content = e.text
                 elif e.category in UnstructuredPDF.image_types:
                     if not e.metadata.image_base64 or not e.metadata.image_mime_type:
@@ -524,11 +524,11 @@ class DoclingPDF(BaseOperation):
                     content = buffered.getvalue()
                     text = e.caption_text(doc)
                 elif isinstance(e, TableItem):
-                    mimetype = "text/plain"
+                    mimetype = MimeType.text
                     content = e.export_to_markdown()
                     text = content
                 else:
-                    mimetype = "text/plain"
+                    mimetype = MimeType.text
                     content = e.text
                     text = e.text
 

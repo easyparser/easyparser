@@ -1,6 +1,7 @@
 import pytest
 
 from easyparser.base import Chunk, ChunkGroup
+from easyparser.mime import MimeType
 
 
 def test_construct_empty():
@@ -16,8 +17,8 @@ def test_construct_empty():
 
 
 def test_construct_supplied_chunks_only():
-    chunk1 = Chunk(mimetype="plain/text", text="hello world")
-    chunk2 = Chunk(mimetype="plain/text", text="goodbye world")
+    chunk1 = Chunk(mimetype=MimeType.text, text="hello world")
+    chunk2 = Chunk(mimetype=MimeType.text, text="goodbye world")
     group = ChunkGroup([chunk1, chunk2])
 
     assert bool(group) is True
@@ -28,7 +29,7 @@ def test_construct_supplied_chunks_only():
 
 
 def test_construct_supplied_root_only():
-    root = Chunk(mimetype="plain/text", text="hello world")
+    root = Chunk(mimetype=MimeType.text, text="hello world")
     group = ChunkGroup(root=root)
 
     assert bool(group) is False, "Should still be empty as no chunks were supplied"
@@ -42,8 +43,8 @@ def test_construct_supplied_root_only():
 
 
 def test_append():
-    chunk1 = Chunk(mimetype="plain/text", text="hello world")
-    chunk2 = Chunk(mimetype="plain/text", text="goodbye world")
+    chunk1 = Chunk(mimetype=MimeType.text, text="hello world")
+    chunk2 = Chunk(mimetype=MimeType.text, text="goodbye world")
 
     group = ChunkGroup()
     assert len(group) == 0
@@ -55,10 +56,10 @@ def test_append():
 
 def test_append_multiple_groups():
     """Should raise error when append to a group containing multiple roots"""
-    root1 = Chunk(mimetype="plain/text", text="root1")
-    root2 = Chunk(mimetype="plain/text", text="root2")
-    chunk1 = Chunk(mimetype="plain/text", text="hello world")
-    chunk2 = Chunk(mimetype="plain/text", text="goodbye world")
+    root1 = Chunk(mimetype=MimeType.text, text="root1")
+    root2 = Chunk(mimetype=MimeType.text, text="root2")
+    chunk1 = Chunk(mimetype=MimeType.text, text="hello world")
+    chunk2 = Chunk(mimetype=MimeType.text, text="goodbye world")
 
     group1 = ChunkGroup(root=root1)
     assert len(group1) == 0
@@ -78,8 +79,8 @@ def test_append_multiple_groups():
 
 
 def test_extend():
-    chunk1 = Chunk(mimetype="plain/text", text="hello world")
-    chunk2 = Chunk(mimetype="plain/text", text="goodbye world")
+    chunk1 = Chunk(mimetype=MimeType.text, text="hello world")
+    chunk2 = Chunk(mimetype=MimeType.text, text="goodbye world")
 
     group = ChunkGroup()
     assert len(group) == 0
@@ -89,10 +90,10 @@ def test_extend():
 
 def test_extend_multiple_groups():
     """Should raise error when extend to a group containing multiple roots"""
-    root1 = Chunk(mimetype="plain/text", text="root1")
-    root2 = Chunk(mimetype="plain/text", text="root2")
-    chunk1 = Chunk(mimetype="plain/text", text="hello world")
-    chunk2 = Chunk(mimetype="plain/text", text="goodbye world")
+    root1 = Chunk(mimetype=MimeType.text, text="root1")
+    root2 = Chunk(mimetype=MimeType.text, text="root2")
+    chunk1 = Chunk(mimetype=MimeType.text, text="hello world")
+    chunk2 = Chunk(mimetype=MimeType.text, text="goodbye world")
 
     group1 = ChunkGroup(root=root1)
     assert len(group1) == 0
@@ -110,8 +111,8 @@ def test_extend_multiple_groups():
 
 def test_iter():
     chunks = [
-        Chunk(mimetype="plain/text", text="hello world"),
-        Chunk(mimetype="plain/text", text="goodbye world"),
+        Chunk(mimetype=MimeType.text, text="hello world"),
+        Chunk(mimetype=MimeType.text, text="goodbye world"),
     ]
     group = ChunkGroup(chunks)
     for idx, chunk in enumerate(group):

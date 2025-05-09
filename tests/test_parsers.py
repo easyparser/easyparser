@@ -83,7 +83,6 @@ def test_jpg():
     root = ctrl.as_root_chunk(jpg_path1)
     chunks = RapidOCRImageText.run(root)
     chunk = chunks[0]
-    chunk.print_graph()
     assert isinstance(chunk, Chunk)
 
 

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+from easyparser.mime import MimeType
 from easyparser.models import completion
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ def parse_image(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chu
 def parse_table(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chunk:
     """Parse the table shape and convert to Markdown."""
     chunk = Chunk(
-        mimetype="text/plain",
+        mimetype=MimeType.text,
         ctype=CType.Figure,
         origin=parent_chunk.origin,
     )
@@ -148,7 +149,7 @@ def parse_table(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chu
 def parse_chart(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chunk:
     """Parse the chart shape and convert to Markdown."""
     chunk = Chunk(
-        mimetype="text/plain",
+        mimetype=MimeType.text,
         ctype=CType.Para,
         origin=parent_chunk.origin,
     )
@@ -180,7 +181,7 @@ def parse_chart(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chu
 def parse_text(shape, parent_chunk, slide_width, slide_height, **kwargs) -> Chunk:
     """Parse the text shape"""
     chunk = Chunk(
-        mimetype="text/plain",
+        mimetype=MimeType.text,
         ctype=CType.Para,
         origin=parent_chunk.origin,
     )
@@ -219,7 +220,7 @@ def parse_shape(
     elif shape.shape_type == ps.MSO_SHAPE_TYPE.GROUP:
         sorted_shapes = sorted(shape.shapes, key=attrgetter("top", "left"))
         chunk = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Div,
             origin=parent_chunk.origin,
         )
@@ -353,7 +354,7 @@ class PptxParser(BaseOperation):
 
                     if text_frame:
                         child = Chunk(
-                            mimetype="text/plain",
+                            mimetype=MimeType.text,
                             ctype=CType.Para,
                             origin=slide_chunk.origin,
                             content=f"Slide note: {text_frame}",

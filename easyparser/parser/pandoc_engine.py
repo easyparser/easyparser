@@ -10,7 +10,7 @@ except ImportError:
     pass
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
-from easyparser.mime import guess_mimetype
+from easyparser.mime import MimeType, guess_mimetype
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ def parse_ordered_list(ordered_list_node: dict) -> Chunk:
         }
     )
 
-    chunk = Chunk(mimetype="text/plain", ctype=CType.List, metadata=metadata)
+    chunk = Chunk(mimetype=MimeType.text, ctype=CType.List, metadata=metadata)
     prev_chunk = None
 
     items = ordered_list_node["c"][1]
@@ -142,7 +142,7 @@ def parse_bullet_list(bullet_list_node: dict) -> Chunk:
         "citations": [],
         "other_attributes": [{"type": "list_type", "value": "bullet"}],
     }
-    chunk = Chunk(mimetype="text/plain", ctype=CType.List, metadata=metadata)
+    chunk = Chunk(mimetype=MimeType.text, ctype=CType.List, metadata=metadata)
     prev_chunk = None
 
     # Add list type to other_attributes
@@ -213,7 +213,7 @@ def parse_header(header_node) -> Chunk:
 
     # The third element is the content array
     chunk = process_inlines(header_data[2])
-    chunk.mimetype = "text/plain"
+    chunk.mimetype = MimeType.text
     chunk.ctype = CType.Header
     if chunk.metadata is None:
         chunk.metadata = metadata
@@ -271,7 +271,7 @@ def parse_table(table_node: dict) -> Chunk:
         json.dumps(santinel), to="markdown", format="json"
     )
     return Chunk(
-        mimetype="text/plain",
+        mimetype=MimeType.text,
         ctype=CType.Table,
         content=table_markdown,
         text=table_markdown,
@@ -372,7 +372,7 @@ def process_blocks(blocks: list[dict]) -> Chunk:
             - 'citations': List of citations
             - 'other_attributes': Other Pandoc attributes
     """
-    chunk = Chunk(mimetype="text/plain", ctype=CType.Para, content="")
+    chunk = Chunk(mimetype=MimeType.text, ctype=CType.Para, content="")
     if not blocks:
         return chunk
 
@@ -446,7 +446,7 @@ def process_block(block: dict) -> Chunk:
         }
 
         return Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype="__pandoc__rawblock__",
             content=raw_content,
             text=raw_content,
@@ -461,7 +461,7 @@ def process_block(block: dict) -> Chunk:
         attrs = content[0]
 
         chunk = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Code,
             content=content[1],
             text=content[1],
@@ -490,7 +490,7 @@ def process_block(block: dict) -> Chunk:
     elif block_type == "Table":
         return parse_table(block)
     elif block_type == "HorizontalRule":
-        return Chunk(mimetype="text/plain", ctype=CType.Para, content="-----\n")
+        return Chunk(mimetype=MimeType.text, ctype=CType.Para, content="-----\n")
     else:
         raise NotImplementedError(f"Unknown pandoc block type: {block_type}")
 
@@ -513,7 +513,7 @@ def process_inlines(inlines: list[dict]) -> Chunk:
         "other_attributes": [],
     }
     chunk = Chunk(
-        mimetype="text/plain", ctype=CType.Inline, content="", metadata=metadata
+        mimetype=MimeType.text, ctype=CType.Inline, content="", metadata=metadata
     )
     for inline in inlines:
         if not isinstance(inline, dict):
@@ -782,7 +782,9 @@ def process_inlines(inlines: list[dict]) -> Chunk:
 class PandocEngine(BaseOperation):
 
     @classmethod
-    def run(cls, chunk: Chunk | ChunkGroup, **kwargs) -> ChunkGroup:
+    def run(
+        cls, chunk: Chunk | ChunkGroup, input_format: str | None = None, **kwargs
+    ) -> ChunkGroup:
         """Load structured document files using Pandoc.
 
         It is most suitable for text-heavy files while preserving document structure
@@ -800,7 +802,11 @@ class PandocEngine(BaseOperation):
 
             media = tempfile.TemporaryDirectory(prefix="chunking_pandoc_media")
             json_string = pypandoc.convert_file(
-                fp, to="json", extra_args=["--extract-media", media.name], sandbox=True
+                fp,
+                to="json",
+                format=input_format,
+                extra_args=["--extract-media", media.name],
+                sandbox=True,
             )
             data = json.loads(json_string)
             bls = data["blocks"]

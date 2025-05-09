@@ -2,6 +2,7 @@ import logging
 from collections import defaultdict
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType, Origin
+from easyparser.mime import MimeType
 from easyparser.models import completion
 
 logger = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ class RapidOCRImageText(BaseOperation):
             id2chunk = {mc.id: mc}
             for _i, ocr_box in enumerate(ocr_boxes):
                 child = Chunk(
-                    mimetype="text/plain",
+                    mimetype=MimeType.text,
                     ctype=CType.Inline,
                     content=ocr_result.txts[_i],
                     text=ocr_result.txts[_i],
@@ -96,7 +97,7 @@ class RapidOCRImageText(BaseOperation):
                 if largest_iou > 0:
                     idx_lclass = iou.argmax()
                     if idx_lclass not in ocr_box_classes:
-                        chunk_lclass = Chunk(mimetype="text/plain")
+                        chunk_lclass = Chunk(mimetype=MimeType.text)
                         if lclasses[idx_lclass] == "table":
                             chunk_lclass.ctype = CType.Table
                         elif lclasses[idx_lclass] == "figure":

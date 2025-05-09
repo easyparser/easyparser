@@ -2,6 +2,7 @@ import json
 import logging
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+from easyparser.mime import MimeType
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class JsonParser(BaseOperation):
             ch = Chunk(
                 ctype=CType.Div,
                 content=content,
-                mimetype="text/plain",
+                mimetype=MimeType.text,
             )
             chunk.add_children(ch)
             output.append(chunk)
@@ -51,7 +52,7 @@ class TomlParser(BaseOperation):
             ch = Chunk(
                 ctype=CType.Div,
                 content=content,
-                mimetype="text/plain",
+                mimetype=MimeType.text,
             )
             chunk.add_children(ch)
             output.append(chunk)
@@ -86,7 +87,7 @@ class YamlParser(BaseOperation):
             ch = Chunk(
                 ctype=CType.Div,
                 content=content,
-                mimetype="text/plain",
+                mimetype=MimeType.text,
             )
             chunk.add_children(ch)
             output.append(chunk)

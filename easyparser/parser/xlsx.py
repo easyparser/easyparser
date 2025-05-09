@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+from easyparser.mime import MimeType
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def parse_drawing_texts(xlsx_path, drawing_path) -> list[Chunk]:
 
             if text_parts:
                 chunk = Chunk(
-                    mimetype="plain/text",
+                    mimetype=MimeType.text,
                     ctype=CType.Para,
                     content="\n\n".join(text_parts),
                 )
@@ -111,7 +112,7 @@ class XlsxOpenpyxlParser(BaseOperation):
 
                 # Create a new chunk for the sheet
                 sheet_chunk = Chunk(
-                    mimetype="plain/text",
+                    mimetype=MimeType.text,
                     ctype=CType.Header,
                     content=sheet.title,
                 )
@@ -151,7 +152,7 @@ class XlsxOpenpyxlParser(BaseOperation):
 
                     # Create table chunk
                     table_chunk = Chunk(
-                        mimetype="plain/text",
+                        mimetype=MimeType.text,
                         ctype=CType.Table,
                         content="",
                         parent=sheet_chunk,
@@ -176,7 +177,7 @@ class XlsxOpenpyxlParser(BaseOperation):
                         csv_writer.writerow(row)
                         rows.append(
                             Chunk(
-                                mimetype="plain/text",
+                                mimetype=MimeType.text,
                                 ctype=CType.TableRow,
                                 content=string_io.getvalue().strip(),
                                 parent=table_chunk,

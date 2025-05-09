@@ -2,7 +2,9 @@ import copy
 import re
 from typing import Callable, Literal, Optional
 
-from ..base import BaseOperation, Chunk, ChunkGroup
+from easyparser.base import BaseOperation, Chunk, ChunkGroup
+from easyparser.mime import MimeType
+
 from .utils import merge_splits, split_with_regex, word_len
 
 _whitespace_pattern = re.compile(r"\s+")
@@ -173,7 +175,7 @@ class ChunkByCharacters(BaseOperation):
 
             splitted_chunks = [
                 Chunk(
-                    mimetype="text/plain",
+                    mimetype=MimeType.text,
                     content=text,
                     origin=ch.origin,
                     parent=ch,

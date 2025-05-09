@@ -3,6 +3,7 @@ import io
 import logging
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+from easyparser.mime import MimeType
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class CsvParser(BaseOperation):
             logger.info(f"Parsing {root.origin.location}")
             # Create a table chunk as the main container
             table_chunk = Chunk(
-                mimetype="plain/text",
+                mimetype=MimeType.text,
                 ctype=CType.Table,
                 content="",
                 metadata={
@@ -64,7 +65,7 @@ class CsvParser(BaseOperation):
 
                     # Create a new row chunk
                     row_chunk = Chunk(
-                        mimetype="plain/text",
+                        mimetype=MimeType.text,
                         ctype=CType.TableRow,
                         content=string_io.getvalue().strip(),
                         parent=table_chunk,

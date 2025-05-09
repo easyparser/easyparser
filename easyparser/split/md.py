@@ -1,6 +1,7 @@
 from typing import Callable
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup
+from easyparser.mime import MimeType
 
 from .utils import word_len
 
@@ -285,7 +286,7 @@ class MarkdownSplitByHeading(BaseOperation):
                         text = content
 
                 chunk = Chunk(
-                    mimetype="plain/text",
+                    mimetype=MimeType.text,
                     content=content,
                     text=text,
                     origin=mc.origin,

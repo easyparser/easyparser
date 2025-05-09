@@ -1,8 +1,6 @@
 # flake8: noqa: E501
-import json
-import re
-
 from easyparser.base import BaseOperation, Chunk, ChunkGroup
+from easyparser.mime import MimeType
 from easyparser.models import completion, parse_json_from_text
 
 CAPTION_PROMPT = """Decompose the "Input" into clear and simple propositions, ensuring they are interpretable out of context.
@@ -69,7 +67,7 @@ def get_proposition(chunk: Chunk, model: str | None = None) -> list[Chunk]:
         props = completion_json(CAPTION_PROMPT.format(text=chunk.text), alias=model)
         propositions = [
             Chunk(
-                mimetype="text/plain", content=prop, metadata={"originals": [chunk.id]}
+                mimetype=MimeType.text, content=prop, metadata={"originals": [chunk.id]}
             )
             for prop in props
         ]
@@ -79,7 +77,7 @@ def get_proposition(chunk: Chunk, model: str | None = None) -> list[Chunk]:
             props = completion_json(CAPTION_PROMPT.format(text=content, alias=model))
             propositions = [
                 Chunk(
-                    mimetype="text/plain",
+                    mimetype=MimeType.text,
                     content=prop,
                     metadata={"originals": [chunk.id]},
                 )

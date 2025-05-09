@@ -34,10 +34,10 @@ def guess_mimetype(path, default: str = "application/octet-stream") -> str:
     if Path(path).is_dir():
         return MimeType.directory
 
-    if _m:
-        return _m.identify_path(path).output.mime_type
     if magic:
         return magic.from_file(path, mime=True)
+    if _m:
+        return _m.identify_path(path).output.mime_type
 
     guessed = _mimetypes_guess_file(path)[0]
     if guessed:

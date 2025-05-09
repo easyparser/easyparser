@@ -6,6 +6,7 @@ Source: https://github.com/FullStackRetrieval-com/RetrievalTutorials/blob/a4570f
 import uuid
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup
+from easyparser.mime import MimeType
 from easyparser.models import completion
 
 from .propositionizer import Propositionizer
@@ -212,7 +213,7 @@ class AgenticChunker(BaseOperation):
 
             chs = [
                 Chunk(
-                    mimetype="text/plain",
+                    mimetype=MimeType.text,
                     content=" ".join(e.content for e in group["propositions"]),
                     summary=group["summary"],
                     metadata={

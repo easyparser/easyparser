@@ -1,6 +1,7 @@
 import logging
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+from easyparser.mime import MimeType
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
     elif node.type == "paragraph":
         text = content[node.start_byte : node.end_byte].decode("utf-8").strip()
         return Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Para,
             content=text,
             text=text,
@@ -112,7 +113,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
     elif node.type == "fenced_code_block":
         text = content[node.start_byte : node.end_byte].decode("utf-8").strip()
         return Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Code,
             content=text,
             text=text,
@@ -151,7 +152,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
                 lvl = 6
 
         chunk = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             content=text,
         )
 

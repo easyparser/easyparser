@@ -152,7 +152,7 @@ class Controller:
             chunk = Chunk(
                 ctype=CType.Root,
                 content=f"File {path_str}",
-                mimetype="text/plain",
+                mimetype=MimeType.text,
                 origin=Origin(
                     location=path_str, protocol="file", metadata={"mimetype": mimetype}
                 ),
@@ -165,7 +165,7 @@ class Controller:
             chunk = Chunk(
                 ctype=CType.Root,
                 content=f"Directory {path_str}",
-                mimetype="text/plain",
+                mimetype=MimeType.text,
                 origin=Origin(location=path_str, protocol="directory"),
             )
             chunk.id = f"dir_{chunk.id}"

@@ -1,4 +1,5 @@
 from easyparser.base import Chunk, CType
+from easyparser.mime import MimeType
 
 
 class TestChunkCleanUnwrapSingleChild:
@@ -10,7 +11,7 @@ class TestChunkCleanUnwrapSingleChild:
         """
         # Create parent chunk with no content
         parent = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Div,
             content=None,
         )
@@ -40,7 +41,7 @@ class TestChunkCleanUnwrapSingleChild:
         """Test when unwrap_single_child=False, no inheritance occurs"""
         # Create parent chunk with no content
         parent = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Div,
             content=None,
         )
@@ -60,7 +61,7 @@ class TestChunkCleanUnwrapSingleChild:
         parent.clean(unwrap_single_child=False)
 
         # Verify parent has NOT inherited properties from child
-        assert parent.mimetype == "text/plain"
+        assert parent.mimetype == MimeType.text
         assert parent.ctype == CType.Div
         assert parent.content is None
         assert parent.metadata is None
@@ -72,7 +73,7 @@ class TestChunkCleanUnwrapSingleChild:
         """
         # Create parent chunk WITH content
         parent = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Div,
             content="Parent content",
         )
@@ -92,7 +93,7 @@ class TestChunkCleanUnwrapSingleChild:
         parent.clean(unwrap_single_child=True)
 
         # Verify parent has NOT inherited properties from child
-        assert parent.mimetype == "text/plain"
+        assert parent.mimetype == MimeType.text
         assert parent.ctype == CType.Div
         assert parent.content == "Parent content"
         assert parent.metadata is None
@@ -104,7 +105,7 @@ class TestChunkCleanUnwrapSingleChild:
         """
         # Create parent chunk with no content
         parent = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Div,
             content=None,
         )
@@ -131,7 +132,7 @@ class TestChunkCleanUnwrapSingleChild:
         parent.clean(unwrap_single_child=True)
 
         # Verify parent has NOT inherited properties from child
-        assert parent.mimetype == "text/plain"
+        assert parent.mimetype == MimeType.text
         assert parent.ctype == CType.Div
         assert parent.content is None
         assert parent.child == child1  # First child still exists
@@ -141,7 +142,7 @@ class TestChunkCleanUnwrapSingleChild:
         """Test that when child's ctype is Inline, parent's ctype is preserved"""
         # Create parent chunk with no content but a non-default ctype
         parent = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Div,
             content=None,
         )
@@ -168,7 +169,7 @@ class TestChunkCleanUnwrapSingleChild:
         """Test proper merging of metadata when unwrapping child"""
         # Create parent chunk with no content but with metadata
         parent = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Div,
             content=None,
             metadata={"parent_key": "parent_value"},
@@ -198,7 +199,7 @@ class TestChunkCleanUnwrapSingleChild:
         """Test that parent inherits child's child when unwrapping"""
         # Create parent chunk with no content
         parent = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Div,
             content=None,
         )
@@ -233,7 +234,7 @@ class TestChunkCleanUnwrapSingleChild:
         """Test unwrapping with multiple levels of empty chunks before content chunk"""
         # Create great-grandparent chunk with no content
         great_grandparent = Chunk(
-            mimetype="text/plain",
+            mimetype=MimeType.text,
             ctype=CType.Div,
             content=None,
             metadata={"level": "great-grandparent"},
