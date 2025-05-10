@@ -21,6 +21,3 @@ def test_agentic_chunker():
     flattened = FlattenToMarkdown.run(chunk, max_size=512)
     output = AgenticChunker.run(flattened[0].clone(next=None))
     assert isinstance(output[0], Chunk)
-
-
-test_agentic_chunker()

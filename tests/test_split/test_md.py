@@ -14,6 +14,3 @@ def test_split_heading():
         root.content = f.read()
     chunks = MarkdownSplitByHeading.run(root, min_chunk_size=100)
     assert len(chunks) > 0
-
-
-test_split_heading()
