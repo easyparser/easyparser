@@ -7,9 +7,11 @@ from pathlib import Path
 from gradio_pdf import PDF
 
 import gradio as gr
+from easyparser.base import CType
 from easyparser.controller import Controller
 from easyparser.parser import DoclingPDF, FastPDF, SycamorePDF, UnstructuredPDF
-from easyparser.util.plot import plot_pdf
+from easyparser.parser.fastpdf.util import bytes_to_base64
+from easyparser.util.plot import plot_img, plot_pdf
 
 METHOD_MAP = {
     "easyparser_fastpdf": FastPDF,
@@ -21,14 +23,34 @@ METHOD_LIST = list(METHOD_MAP.keys())
 TMP_DIR = Path("/tmp/visualize")
 TMP_DIR.mkdir(exist_ok=True)
 ctrl = Controller()
+DEBUG_DIR = Path("debug")
 
 
 def format_chunk(chunk):
-    text = chunk.text
-    if chunk.metadata["label"] == "heading":
-        text = f"### {text}"
+    if chunk.ctype == CType.Root or not chunk.content:
+        return ""
 
-    return text
+    if chunk.mimetype in ["image/png", "image/jpeg", "image/jpg"]:
+        block_img_base64 = bytes_to_base64(
+            chunk.content,
+            mime_type=chunk.mimetype,
+        )
+        block_text = chunk.text
+        block_type = chunk.ctype
+
+        block_img_elem = f'<img src="{block_img_base64}" />'
+        block_text = (
+            "{}\n\n<details><summary>({} image)</summary>" "{}</details>"
+        ).format(
+            block_text,
+            block_type,
+            block_img_elem,
+        )
+    elif chunk.ctype == CType.Header:
+        block_text = f"### {chunk.text}"
+    else:
+        block_text = chunk.text
+    return block_text
 
 
 def convert_document(pdf_path, method, use_full_page=False, enabled=True):
@@ -36,6 +58,9 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
         print("Processing file", pdf_path, "with method", method)
     else:
         return "", "", "", []
+
+    if not pdf_path:
+        raise ValueError("No file provided")
 
     # benchmarking
     start = time.time()
@@ -48,37 +73,57 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
         chunks = method.run(
             root,
             render_full_page=use_full_page,
+            debug_path=DEBUG_DIR,
         )
     else:
         chunks = method.run(root)
 
+    # serialie the child chunks to list
+    chunks = [chunk for _, chunk in chunks[0].walk() if chunk.ctype != CType.Root]
+    print("Total chunks:", len(chunks))
+
+    max_page = 0
     print("Table Of Content")
     for chunk in chunks:
-        if chunk.metadata["label"] == "heading":
+        if chunk.ctype == CType.Header:
             print(chunk.text)
+        max_page = max(max_page, chunk.origin.location["page"])
 
-    text = "\n\n".join([format_chunk(chunk) for chunk in chunks])
+    rendered_texts = [format_chunk(chunk) for chunk in chunks]
+    # remove empty strings
+    combined_text = "\n\n".join([text for text in rendered_texts if text])
 
     duration = time.time() - start
-    duration_message = f"Conversion with {method} took *{duration:.2f} seconds*"
+    duration_per_page = duration / max_page
+    duration_message = (
+        f"Conversion with {method} took *{duration:.2f}s* total - "
+        f"*{duration_per_page:.2f}s* per page"
+    )
     print(duration_message)
 
     # create named temporary folder
     debug_dir = TMP_DIR / Path(pdf_path).stem
     debug_dir.mkdir(exist_ok=True)
-    plot_pdf(pdf_path, chunks, debug_dir)
+
+    if pdf_path.endswith(".pdf"):
+        plot_pdf(pdf_path, chunks, debug_dir)
+    else:
+        plot_img(pdf_path, chunks, debug_dir)
 
     debug_image_paths = list(debug_dir.glob("*.png"))
 
     return (
         duration_message,
-        text,
-        text,
+        combined_text,
+        combined_text,
         debug_image_paths,
     )
 
 
 def to_zip_file(file_path, methods, *output_components):
+    if not file_path:
+        return gr.update(visible=False)
+
     markdown_text_dict = dict()
     debug_images_dict = defaultdict(list)
     for idx, method_name in enumerate(METHOD_LIST):
@@ -149,6 +194,12 @@ with gr.Blocks(
                 label="Upload PDF document",
                 file_types=[
                     ".pdf",
+                    ".png",
+                    ".jpg",
+                    ".jpeg",
+                    ".tiff",
+                    ".tif",
+                    ".bmp",
                 ],
             )
             with gr.Accordion("Examples:"):

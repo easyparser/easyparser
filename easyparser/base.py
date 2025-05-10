@@ -61,6 +61,7 @@ class CType:
 
     # Chunk with this type will be interpreted as the child of the parent chunk
     Para = "para"
+    Fomula = "formula"
     List = "list"
     Table = "table"
     TableRow = "tablerow"
@@ -80,8 +81,10 @@ class CType:
             cls.__available_types = [
                 "inline",
                 "para",
+                "formula",
                 "list",
                 "table",
+                "tablerow",
                 "header",
                 "figure",
                 "code",

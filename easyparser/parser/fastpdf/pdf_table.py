@@ -48,10 +48,7 @@ def get_tables_img2table(path: str, executor: ProcessPoolExecutor | None):
     if executor is None:
         detected_tables = [detect_tables_single_page(img) for img in doc.images]
     else:
-        futures = [
-            executor.submit(detect_tables_single_page, img) for img in doc.images
-        ]
-        detected_tables = [f.result() for f in futures]
+        detected_tables = executor.map(detect_tables_single_page, doc.images)
 
     tables = {idx: table_list for idx, table_list in enumerate(detected_tables)}
     tables = doc.get_table_content(

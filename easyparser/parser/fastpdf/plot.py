@@ -4,22 +4,28 @@ import cv2
 from img2table.document import PDF
 
 
-def plot_blocks(path: str, pages: list[dict], output_path: str):
+def plot_blocks(path: str, pages: list[dict], output_path: str, pad: int = 5):
     output_path = Path(output_path)
     output_path.mkdir(exist_ok=True)
-    doc = PDF(path)
-    for idx, img in enumerate(doc.images):
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
+    is_image = Path(path).suffix.lower() != ".pdf"
+
+    if not is_image:
+        doc = PDF(path)
+        doc_images = [cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in doc.images]
+    else:
+        doc_images = [cv2.imread(path)]
+
+    for idx, img in enumerate(doc_images):
         page = pages[idx]
         page_image_h, page_image_w = img.shape[:2]
 
         for block in page["blocks"]:
             x1, y1, x2, y2 = block["bbox"]
-            x1 = x1 * page_image_w
-            y1 = y1 * page_image_h
-            x2 = x2 * page_image_w
-            y2 = y2 * page_image_h
+            x1 = x1 * page_image_w - pad
+            y1 = y1 * page_image_h - pad
+            x2 = x2 * page_image_w + pad
+            y2 = y2 * page_image_h + pad
 
             for line in block.get("lines", []):
                 line_x1, line_y1, line_x2, line_y2 = line["bbox"]

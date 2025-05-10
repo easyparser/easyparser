@@ -166,7 +166,6 @@ class RapidOCRImageText(BaseOperation):
         return [
             "rapidocr",
             "rapid-layout",
-            "rapid_table",
             "opencv-python",
             "pillow",
         ]

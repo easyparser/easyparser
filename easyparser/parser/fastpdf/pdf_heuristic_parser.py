@@ -222,10 +222,10 @@ def parsed_pdf_to_markdown(
 
 def parition_pdf_heuristic(
     doc_path: Path | str,
-    executor: ProcessPoolExecutor | None,
+    executor: ProcessPoolExecutor | None = None,
     extract_table=False,
 ) -> str:
-    """Convert any document to GitHub Flavored Markdown."""
+    """Convert PDF document to Markdown."""
     # Parse the PDF with pdftext and convert it to Markdown.
     pages = dictionary_output(
         doc_path,
@@ -254,12 +254,3 @@ def parition_pdf_heuristic(
         page.pop("refs", None)
 
     return pages
-
-
-def pages_to_markdown(pages: list[dict[str, Any]]) -> list[str]:
-    """Convert a list of pages to Markdown."""
-    md_text = ""
-    for page in pages:
-        for block in page["blocks"]:
-            md_text += block["text"] + "\n\n"
-    return md_text

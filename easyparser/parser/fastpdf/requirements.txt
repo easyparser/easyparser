@@ -1,5 +1,5 @@
 git+https://github.com/easyparser/pdftext.git
 img2table
 Pillow
-opencv-contrib-python
 rapid-layout
+opencv-contrib-python

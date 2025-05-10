@@ -1,5 +1,6 @@
 import io
 import logging
+from concurrent.futures import ProcessPoolExecutor
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
 from easyparser.mime import MimeType, mime_pdf
@@ -29,9 +30,12 @@ class SycamorePDF(BaseOperation):
         "List-item",
         "Text",
         "Footnote",
+        "table",
+        "Table",
     }
-    image_types = {"Formula", "Image", "table", "Table"}
+    image_types = {"Formula", "Image"}
     _label_mapping = {
+        "Formula": CType.Fomula,
         "Page-header": CType.Header,
         "Section-header": CType.Header,
         "Title": CType.Header,
@@ -150,6 +154,13 @@ class FastPDF(BaseOperation):
     """Parsing PDF using a fast and efficient parser"""
 
     supported_mimetypes = ["application/pdf"]
+    _label_mapping = {
+        "heading": CType.Header,
+        "image": CType.Figure,
+        "table": CType.Table,
+        "formula": CType.Fomula,
+        "text": CType.Para,
+    }
 
     @classmethod
     def run(
@@ -158,7 +169,8 @@ class FastPDF(BaseOperation):
         use_layout_parser: bool = True,
         render_full_page: bool = False,
         extract_table: bool = True,
-        use_multiprocessing: bool = False,
+        multiprocessing_executor: ProcessPoolExecutor | None = None,
+        debug_path: str | None = None,
         **kwargs,
     ) -> ChunkGroup:
         """Load the PDF with a fast PDF parser.
@@ -166,12 +178,9 @@ class FastPDF(BaseOperation):
         Args:
             chunk: The input chunk to process.
         """
-        from concurrent.futures import ProcessPoolExecutor
-
         from .fastpdf.pdf_heuristic_parser import parition_pdf_heuristic
         from .fastpdf.pdf_layout_parser import partition_pdf_layout
 
-        executor = ProcessPoolExecutor() if use_multiprocessing else None
         if isinstance(chunk, Chunk):
             chunk = ChunkGroup(chunks=[chunk])
 
@@ -183,24 +192,30 @@ class FastPDF(BaseOperation):
                 raise ValueError("Origin is not defined")
 
             # call the main function to partition the PDF
-            if use_layout_parser:
+            if use_layout_parser or render_full_page:
                 pages = partition_pdf_layout(
                     str(pdf_root.origin.location),
                     render_full_page=render_full_page,
+                    debug_path=debug_path,
                 )
             else:
                 pages = parition_pdf_heuristic(
                     str(pdf_root.origin.location),
-                    executor=executor,
+                    executor=multiprocessing_executor,
                     extract_table=extract_table,
                 )
 
             for page in pages:
                 page_label = page["page"] + 1
                 for block in page["blocks"]:
-                    # only support text elements for now
-                    # TODO: add support for other types (image)
-                    mimetype = MimeType.text
+                    text = block["text"]
+                    image_content = block.get("image")
+                    if image_content:
+                        mimetype = "image/png"
+                        content = image_content
+                    else:
+                        mimetype = MimeType.text
+                        content = text
                     x1, y1, x2, y2 = block["bbox"]
 
                     origin = mime_pdf.to_origin(
@@ -211,26 +226,15 @@ class FastPDF(BaseOperation):
                         y2,
                         page_label,
                     )
-                    text = block["text"]
-                    r = Chunk(
-                        ctype="text",
+                    c = Chunk(
+                        ctype=cls._label_mapping.get(block["type"], "text"),
                         mimetype=mimetype,
-                        content=text,
+                        content=content,
                         text=text,
                         parent=pdf_root,
                         origin=origin,
                     )
-                    r.history.append(
-                        cls.name(
-                            extract_table=extract_table,
-                            **kwargs,
-                        )
-                    )
-                    result.append(r)
-
-            for idx, _c in enumerate(result[1:], start=1):
-                _c.prev = result[idx - 1]
-                result[idx - 1].next = _c
+                    result.append(c)
 
             pdf_root.add_children(result)
             output.append(pdf_root)
@@ -243,6 +247,7 @@ class FastPDF(BaseOperation):
             "pdftext",
             "img2table",
             "Pillow",
+            "rapid-layout",
         ]
 
 
@@ -310,7 +315,7 @@ class UnstructuredPDF(BaseOperation):
         "Image": CType.Figure,
         "Picture": CType.Figure,
         "Figure": CType.Figure,
-        "Formula": CType.Inline,
+        "Formula": CType.Fomula,
         "Table": CType.Table,
     }
 
@@ -412,7 +417,7 @@ class DoclingPDF(BaseOperation):
     _label_mapping = {  # taken from docling.types.doc.labels.DocItemLabel
         "caption": CType.Para,
         "footnote": CType.Para,
-        "formula": CType.Inline,
+        "formula": CType.Fomula,
         "list_item": CType.List,
         "page_footer": CType.Para,
         "page_header": CType.Para,

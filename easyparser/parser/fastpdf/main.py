@@ -5,8 +5,8 @@ import pymupdf4llm
 from img2table.document import PDF
 from plot import plot_blocks
 
-from easyparser.parser.fastpdf.pdf_heuristic_parser import pages_to_markdown
-from easyparser.parser.fastpdf.pdf_layout_parser import partition_pdf_layout
+from easyparser.parser.fastpdf import partition_pdf_layout
+from easyparser.parser.fastpdf.util import pages_to_markdown
 
 if __name__ == "__main__":
     executor = ProcessPoolExecutor()
@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     # pages = parition_pdf_heuristic(input_path, executor=executor, extract_table=True)
-    pages = partition_pdf_layout(input_path, render_full_page=True)
+    pages = partition_pdf_layout(input_path, render_full_page=False)
     end_time = time.time()
 
     num_pages = len(pages)
@@ -38,16 +38,6 @@ if __name__ == "__main__":
     executor.shutdown()
 
     # preview the results
-    import json
-
-    with open("output.json", "w") as f:
-        # drop the lines
-        for page in pages:
-            for block in page["blocks"]:
-                if "lines" in block:
-                    del block["lines"]
-
-        json.dump(pages, f, indent=4)
     plot_blocks(input_path, pages, debug_path)
 
     # start_time = time.time()
@@ -56,6 +46,20 @@ if __name__ == "__main__":
     # end_time = time.time()
     # print("Unstructured")
     # print(f"Average time per page: {(end_time - start_time) / num_pages:.2f}s")
+
+    # export to json and markdown
+    import json
+
+    with open("output.json", "w") as f:
+        # drop the lines
+        for page in pages:
+            for block in page["blocks"]:
+                if "lines" in block:
+                    del block["lines"]
+                if "image" in block:
+                    del block["image"]
+
+        json.dump(pages, f, indent=4)
 
     md_text = pages_to_markdown(pages)
     with open("output.md", "w") as f:
