@@ -16,7 +16,7 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Development Status :: 2 - Pre-Alpha"
 ]
-dependencies = ["llm"]
+dependencies = ["llm", "click"]
 
 [project.optional-dependencies]
 dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine", "papermill"]
@@ -24,6 +24,9 @@ dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "
 [project.urls]
 Homepage = "https://github.com/easyparser/easyparser"
 Repository = "https://github.com/easyparser/easyparser"
+
+[project.scripts]
+easyparser = "easyparser.cli:easyparser"
 
 [tool.setuptools.packages.find]
 include = ["easyparser", "easyparser.*"]
