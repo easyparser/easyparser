@@ -36,6 +36,7 @@ html_path = str(asset_folder / "long.html")
 md_path = str(asset_folder / "lz.md")
 ipynb_path = str(asset_folder / "long.ipynb")
 rst_path = str(asset_folder / "long.rst")
+org_path = str(asset_folder / "long.org")
 txt_path = str(asset_folder / "long.txt")
 mp4_path = str(asset_folder / "jfk_30.mp4")
 
@@ -198,6 +199,13 @@ def test_ipynb():
 
 def test_rst():
     root = ctrl.as_root_chunk(rst_path)
+    chunks = PandocEngine.run(root)
+    chunk = chunks[0]
+    assert isinstance(chunk, Chunk)
+
+
+def test_org():
+    root = ctrl.as_root_chunk(org_path)
     chunks = PandocEngine.run(root)
     chunk = chunks[0]
     assert isinstance(chunk, Chunk)
