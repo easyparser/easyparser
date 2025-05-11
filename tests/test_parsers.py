@@ -24,6 +24,7 @@ docx_path = str(asset_folder / "with_image.docx")
 pptx_path = str(asset_folder / "normal.pptx")
 pptx_short = str(asset_folder / "short_image.pptx")
 multi_sheets = str(asset_folder / "multi_sheets.xlsx")
+rtf_path = str(asset_folder / "short.rtf")
 drawing_text_image = str(asset_folder / "drawing_text_image.xlsx")
 csv_path = str(asset_folder / "contains_empty_cell.csv")
 json_path = str(asset_folder / "long.json")
@@ -107,6 +108,13 @@ def test_pptx_fast():
 def test_pptx_image():
     root = ctrl.as_root_chunk(pptx_short)
     chunks = PptxParser.run(root, caption=True)
+    chunk = chunks[0]
+    assert isinstance(chunk, Chunk)
+
+
+def test_rtf():
+    root = ctrl.as_root_chunk(rtf_path)
+    chunks = PandocEngine.run(root)
     chunk = chunks[0]
     assert isinstance(chunk, Chunk)
 

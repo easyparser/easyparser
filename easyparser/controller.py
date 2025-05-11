@@ -55,6 +55,8 @@ class Controller:
             MimeType.pdf: [FastPDF],
             MimeType.docx: [PandocEngine],
             MimeType.pptx: [PptxParser],
+            MimeType.rtf: [PandocEngine],
+            MimeType.rtf_2: [PandocEngine],
             MimeType.xlsx: [XlsxOpenpyxlParser],
             MimeType.csv: [CsvParser, TextParser],
             MimeType.json: [JsonParser, TextParser],

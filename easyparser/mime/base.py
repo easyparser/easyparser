@@ -78,6 +78,8 @@ class MimeType:
     docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     pptx = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    rtf = "application/rtf"
+    rtf_2 = "text/rtf"
 
     # Data interchange
     csv = "text/csv"
