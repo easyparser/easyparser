@@ -811,6 +811,13 @@ class PandocEngine(BaseOperation):
             data = json.loads(json_string)
             bls = data["blocks"]
 
+            if Path(fp).suffix.lower() == ".ipynb":
+                # Unwrap the Div
+                new_bls = []
+                for bl in bls:
+                    new_bls.extend(bl["c"][1])
+                bls = new_bls
+
             parent_chunk_stacks = [root]
             last_chunk = None
 

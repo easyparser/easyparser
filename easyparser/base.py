@@ -531,6 +531,12 @@ class Chunk:
                     current += separator + rendered_child
                     child = child.next
 
+            if self.ctype == CType.Code:
+                # Add code block
+                current = current.strip()
+                if current:
+                    current = f"```\n{current}\n```"
+
             return current
         elif format == "multi":
             current_content = ""

@@ -31,8 +31,14 @@ def guess_mimetype(path, default: str = "application/octet-stream") -> str:
     Returns:
         The mimetype of the file.
     """
-    if Path(path).is_dir():
+    p = Path(path)
+
+    if p.is_dir():
         return MimeType.directory
+
+    if p.suffix == ".ipynb":
+        # .ipynb is a JSON file that magic and magika usually mistake
+        return MimeType.ipynb
 
     if magic:
         return magic.from_file(path, mime=True)
@@ -81,6 +87,9 @@ class MimeType:
     # tar = "application/x-tar"
     epub = "application/epub+zip"
     directory = "inode/directory"
+
+    # Code
+    ipynb = "application/x-ipynb+json"
 
 
 class MimeManager:

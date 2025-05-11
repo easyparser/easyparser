@@ -64,6 +64,7 @@ class Controller:
             MimeType.mp4: [VideoWhisperParser],
             MimeType.epub: [PandocEngine],
             MimeType.directory: [DirectoryParser],
+            MimeType.ipynb: [PandocEngine],
         }
 
     def iter_parser(

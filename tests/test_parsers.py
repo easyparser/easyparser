@@ -34,6 +34,7 @@ wav_path = str(asset_folder / "jfk_apollo_49.wav")
 epub_path = str(asset_folder / "long.epub")
 html_path = str(asset_folder / "long.html")
 md_path = str(asset_folder / "lz.md")
+ipynb_path = str(asset_folder / "long.ipynb")
 txt_path = str(asset_folder / "long.txt")
 mp4_path = str(asset_folder / "jfk_30.mp4")
 
@@ -183,6 +184,13 @@ def test_pandoc_html():
 def test_md():
     root = ctrl.as_root_chunk(md_path)
     chunks = Markdown.run(root)
+    chunk = chunks[0]
+    assert isinstance(chunk, Chunk)
+
+
+def test_ipynb():
+    root = ctrl.as_root_chunk(ipynb_path)
+    chunks = PandocEngine.run(root)
     chunk = chunks[0]
     assert isinstance(chunk, Chunk)
 
