@@ -1,0 +1,190 @@
+import logging
+import re
+from collections import defaultdict
+from typing import List
+
+from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+from easyparser.models import completion
+
+logger = logging.getLogger(__name__)
+
+PROMPT_TEMPLATE = """<task> You are given a set of headers from a document between the starting tag <passages> and ending tag </passages>. Each header is labeled as 'ID `N`' where 'N' is the header number. Your task is to organize the header to markdown tree with (#, ##) tag to represent the correct structure of the table of contents. Some header is not correctly detected and should be removed. </task>
+
+<rules>
+Follow the following rules:
+- Return in the format
+# ID `1`
+## ID `2`
+### ID `3`
+(more levels if needed)
+etc
+- MUST use correct ID tag
+- Only output the header IDs with the format ID `` without any other text
+- If the header is a noisy one, remove the ID from the output
+</rules>
+
+<passages>
+{passages}
+</passages>
+"""  # noqa: E501
+
+
+def _add_id_to_headers(headers: List[str]) -> List[str]:
+    """Prepare the splits for the chunker."""
+    return [
+        f"ID `{i}`: " + header.content.replace("\n", "").strip()
+        for (i, header) in enumerate(headers)
+    ]
+
+
+def _build_toc_tree(
+    headers: List[Chunk],
+    model: str | None,
+) -> List[Chunk]:
+    """Build the table of contents tree from the headers."""
+    headers_text_with_id = _add_id_to_headers(headers)
+    headers_text = "\n".join(headers_text_with_id)
+    response = completion(
+        PROMPT_TEMPLATE.format(passages=headers_text),
+        model=model,
+    )
+    logger.debug(f"Response: {response}")
+    # parse the response
+    id_pattern = r"ID `(\d+)`"
+    headers_level = {}
+    header_ids_in_response = set()
+    for line in response.split("\n"):
+        # count number of leading # to determine the level
+        level = line.count("#")
+        # use regex to get the header id
+        match = re.search(id_pattern, line)
+        if match:
+            header_id = int(match.group(1))
+            header_ids_in_response.add(header_id)
+            # find the header with the id
+            headers_level[header_id] = level
+            logger.debug("#" * level + " " + headers[header_id].content)
+
+    # find parent_id for each header
+    # based on the reading order
+    child_indices = defaultdict(list)
+    for header_id, level in headers_level.items():
+        # find the parent header
+        for i in range(header_id - 1, -1, -1):
+            if headers_level.get(i) is not None:
+                if headers_level[i] < level:
+                    child_indices[i].append(header_id)
+                    break
+
+    used_header_ids = []
+    for header_id, child_header_ids in child_indices.items():
+        used_header_ids += child_header_ids
+
+    to_remove_header_ids = (
+        set(range(len(headers))) - set(used_header_ids) - set(header_ids_in_response)
+    )
+    return child_indices, to_remove_header_ids
+
+
+class TOCBuilder(BaseOperation):
+
+    @classmethod
+    def run(
+        cls,
+        chunks: Chunk | ChunkGroup,
+        use_llm: bool = False,
+        model: str | None = None,
+        **kwargs,
+    ) -> ChunkGroup:
+        """Group chunk by preceding header,
+        assuming the reading order is correct"""
+
+        if isinstance(chunks, Chunk):
+            chunks = ChunkGroup([chunks])
+
+        output = ChunkGroup()
+        for root in chunks:
+            cur_root_children = []
+            parent_to_child_mapping = defaultdict(list)
+            all_headers = []
+
+            increment_header_id = -1
+            cur_header_id = -1
+            cur_header_chunk = None
+            cur_header_children = []
+
+            if use_llm:
+                headers = [
+                    chunk for _, chunk in root.walk() if chunk.ctype == CType.Header
+                ]
+                child_header_indices, to_remove_header_ids = _build_toc_tree(
+                    headers, model=model
+                )
+
+            for _, child_chunk in root.walk():
+                new_child_chunk = child_chunk.clone(no_relation=True)
+
+                if new_child_chunk.ctype == CType.Root:
+                    continue
+
+                if new_child_chunk.ctype == CType.Header:
+                    increment_header_id += 1
+                    all_headers.append(new_child_chunk)
+
+                if new_child_chunk.ctype == CType.Header and (
+                    not use_llm or increment_header_id not in to_remove_header_ids
+                ):
+                    # commit the previous header
+                    if cur_header_chunk and cur_header_children:
+                        parent_to_child_mapping[cur_header_id].extend(
+                            cur_header_children
+                        )
+
+                    cur_header_chunk = new_child_chunk
+                    cur_header_id = increment_header_id
+                    # to mark this node has child and text need to re-rendered
+                    cur_header_chunk.text = None
+                    cur_header_children = []
+                else:
+                    if cur_header_chunk:
+                        cur_header_children.append(new_child_chunk)
+                    else:
+                        cur_root_children.append(new_child_chunk)
+
+            # commit the last header
+            if cur_header_chunk and cur_header_children:
+                parent_to_child_mapping[cur_header_id].extend(cur_header_children)
+
+            # get root headers and add them to the root children
+            if use_llm:
+                header_child_indices = set()
+                for header_id, child_header_ids in child_header_indices.items():
+                    header_child_indices.update(child_header_ids)
+                root_header_indices = sorted(
+                    set(range(len(all_headers)))
+                    - set(to_remove_header_ids)
+                    - set(header_child_indices)
+                )
+            else:
+                root_header_indices = range(len(all_headers))
+            root_headers = [all_headers[i] for i in root_header_indices]
+            cur_root_children.extend(root_headers)
+
+            if use_llm:
+                # update the child headers from child_header_indices
+                for header_id, child_header_ids in child_header_indices.items():
+                    # remove the header from the mapping
+                    parent_to_child_mapping[header_id].extend(
+                        [all_headers[i] for i in child_header_ids]
+                    )
+
+            # set the children
+            for header_id, child_chunks in parent_to_child_mapping.items():
+                all_headers[header_id].add_children(child_chunks)
+
+            # remove children from root
+            new_root = root.clone(no_relation=True)
+            new_root.add_children(cur_root_children)
+            output.append(new_root)
+
+        return output

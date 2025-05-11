@@ -26,7 +26,7 @@ ctrl = Controller()
 DEBUG_DIR = Path("debug")
 
 
-def format_chunk(chunk):
+def format_chunk(chunk, include_image=False):
     if chunk.ctype == CType.Root or not chunk.content:
         return ""
 
@@ -38,14 +38,15 @@ def format_chunk(chunk):
         block_text = chunk.text
         block_type = chunk.ctype
 
-        block_img_elem = f'<img src="{block_img_base64}" />'
-        block_text = (
-            "{}\n\n<details><summary>({} image)</summary>" "{}</details>"
-        ).format(
-            block_text,
-            block_type,
-            block_img_elem,
-        )
+        if include_image:
+            block_img_elem = f'<img src="{block_img_base64}" />'
+            block_text = (
+                "{}\n\n<details><summary>({} image)</summary>" "{}</details>"
+            ).format(
+                block_text,
+                block_type,
+                block_img_elem,
+            )
     elif chunk.ctype == CType.Header:
         block_text = f"### {chunk.text}"
     else:

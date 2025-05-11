@@ -10,6 +10,10 @@ from pdftext.pdf.pages import get_lines, get_spans
 from rapid_layout import RapidLayout, VisLayout
 from rapidocr import RapidOCR
 
+from easyparser.parser.fastpdf.pdf_heuristic_parser import (
+    add_emphasis_metadata,
+    render_emphasis,
+)
 from easyparser.parser.fastpdf.util import (
     crop_img_and_export_base64,
     crop_img_and_export_bytes,
@@ -29,6 +33,7 @@ QUOTE_LOOSEBOX: bool = True
 SUPERSCRIPT_HEIGHT_THRESHOLD: float = 0.7
 LINE_DISTANCE_THRESHOLD: float = 0.1
 MIN_NUM_LINES_2D: int = 5
+MODE_FONT_WEIGHT: int = 450
 CLASS_LIST = ["title", "caption", "figure", "table", "equation", "text"]
 IMAGE_CLASS_LIST = ["figure", "table", "equation"]
 TEXT_CLASS_LIST = ["text", "title", "caption", "table"]
@@ -146,7 +151,7 @@ def do_ocr_page(
     return spans
 
 
-def get_text_pdfium(page: Any):
+def get_text_pdfium(page: Any, use_emphasis_metadata: bool = True):
     textpage = page.get_textpage()
     page_bbox: list[float] = page.get_bbox()
     page_width = math.ceil(abs(page_bbox[2] - page_bbox[0]))
@@ -165,6 +170,11 @@ def get_text_pdfium(page: Any):
         split_on_space=True,
     )
     lines = get_lines(spans)
+    if use_emphasis_metadata:
+        lines = add_emphasis_metadata(
+            lines=lines,
+            mode_font_weight=MODE_FONT_WEIGHT,
+        )
 
     # add order to spans for later sorting of semantic blocks
     for idx, span in enumerate(spans):
@@ -185,6 +195,7 @@ def render_blocks(
     optimize_2d_text: bool = True,
     is_ocr: bool = False,
     export_raw_img: bool = True,
+    use_emphasis_metadata: bool = True,
 ) -> list[dict[str, Any]]:
     """Render blocks with metadata to final text."""
     page_blocks = []
@@ -233,7 +244,11 @@ def render_blocks(
             if block_text:
                 block_text = f"```{class_name}\n{block_text}\n```"
         else:
-            block_text = "".join([span["text"] for span in block_spans])
+            if use_emphasis_metadata and class_name != "title":
+                block_text = "".join(render_emphasis(line) for line in block_lines)
+            else:
+                block_text = "".join([span["text"] for span in block_spans])
+
             block_text = (
                 fix_unicode_encoding(block_text)
                 .replace("\n", " ")
@@ -270,6 +285,7 @@ def partition_pdf_layout(
     render_scale: float = 1.5,
     render_full_page: bool = False,
     optimize_2d_text: bool = False,
+    use_emphasis_metadata: bool = True,
     debug_path: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     doc_path = Path(doc_path)
@@ -306,7 +322,10 @@ def partition_pdf_layout(
 
         if page_pdfium:
             # get text information from pdfium
-            lines, (page_width, page_height) = get_text_pdfium(page_pdfium)
+            lines, (page_width, page_height) = get_text_pdfium(
+                page_pdfium,
+                use_emphasis_metadata=use_emphasis_metadata,
+            )
         else:
             lines = []
             page_width = page_height = 1
@@ -443,6 +462,7 @@ def partition_pdf_layout(
                         page_img=page_img,
                         optimize_2d_text=optimize_2d_text,
                         is_ocr=is_ocr,
+                        use_emphasis_metadata=use_emphasis_metadata,
                     ),
                     "page": page_idx,
                 }
