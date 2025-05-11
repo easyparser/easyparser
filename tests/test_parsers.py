@@ -37,6 +37,7 @@ md_path = str(asset_folder / "lz.md")
 ipynb_path = str(asset_folder / "long.ipynb")
 rst_path = str(asset_folder / "long.rst")
 org_path = str(asset_folder / "long.org")
+tex_path = str(asset_folder / "long.tex")
 txt_path = str(asset_folder / "long.txt")
 mp4_path = str(asset_folder / "jfk_30.mp4")
 
@@ -206,6 +207,13 @@ def test_rst():
 
 def test_org():
     root = ctrl.as_root_chunk(org_path)
+    chunks = PandocEngine.run(root)
+    chunk = chunks[0]
+    assert isinstance(chunk, Chunk)
+
+
+def test_tex():
+    root = ctrl.as_root_chunk(tex_path)
     chunks = PandocEngine.run(root)
     chunk = chunks[0]
     assert isinstance(chunk, Chunk)

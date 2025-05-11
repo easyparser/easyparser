@@ -66,6 +66,7 @@ class MimeType:
     md = "text/markdown"
     rst = "text/x-rst"
     org = "text/org"
+    tex = "text/x-tex"
 
     # Image
     jpeg = "image/jpeg"
