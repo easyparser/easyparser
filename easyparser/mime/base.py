@@ -80,6 +80,7 @@ class MimeType:
     xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     rtf = "application/rtf"
     rtf_2 = "text/rtf"
+    odt = "application/vnd.oasis.opendocument.text"
 
     # Data interchange
     csv = "text/csv"

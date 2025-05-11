@@ -54,6 +54,7 @@ class Controller:
             MimeType.png: [RapidOCRImageText],
             MimeType.pdf: [FastPDF],
             MimeType.docx: [PandocEngine],
+            MimeType.odt: [PandocEngine],
             MimeType.pptx: [PptxParser],
             MimeType.rtf: [PandocEngine],
             MimeType.rtf_2: [PandocEngine],

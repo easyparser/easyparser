@@ -21,6 +21,7 @@ pdf_path1 = str(asset_folder / "short.pdf")
 pdf_path2 = str(asset_folder / "short_image.pdf")
 jpg_path1 = str(asset_folder / "with_table.jpg")
 docx_path = str(asset_folder / "with_image.docx")
+odt_path = str(asset_folder / "with_image.odt")
 pptx_path = str(asset_folder / "normal.pptx")
 pptx_short = str(asset_folder / "short_image.pptx")
 multi_sheets = str(asset_folder / "multi_sheets.xlsx")
@@ -93,6 +94,13 @@ def test_jpg():
 
 def test_pandoc_docx():
     root = ctrl.as_root_chunk(docx_path)
+    chunks = PandocEngine.run(root)
+    chunk = chunks[0]
+    assert isinstance(chunk, Chunk)
+
+
+def test_pandoc_odt():
+    root = ctrl.as_root_chunk(odt_path)
     chunks = PandocEngine.run(root)
     chunk = chunks[0]
     assert isinstance(chunk, Chunk)
