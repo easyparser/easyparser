@@ -47,6 +47,7 @@ class Controller:
             MimeType.text: [TextParser],
             MimeType.html: [PandocHtmlParser, PandocEngine, TextParser],
             MimeType.md: [Markdown, TextParser],
+            MimeType.rst: [PandocEngine],
             MimeType.jpeg: [RapidOCRImageText],
             MimeType.png: [RapidOCRImageText],
             MimeType.pdf: [FastPDF],

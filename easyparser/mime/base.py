@@ -32,13 +32,18 @@ def guess_mimetype(path, default: str = "application/octet-stream") -> str:
         The mimetype of the file.
     """
     p = Path(path)
+    ext = p.suffix.lower()
 
     if p.is_dir():
         return MimeType.directory
 
-    if p.suffix == ".ipynb":
+    if ext == ".ipynb":
         # .ipynb is a JSON file that magic and magika usually mistake
         return MimeType.ipynb
+
+    if ext == ".rst":
+        # .rst is a text file that magic usually mistake
+        return MimeType.rst
 
     if magic:
         return magic.from_file(path, mime=True)
@@ -57,6 +62,7 @@ class MimeType:
     text = "text/plain"
     html = "text/html"
     md = "text/markdown"
+    rst = "text/x-rst"
 
     # Image
     jpeg = "image/jpeg"

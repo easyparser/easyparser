@@ -35,6 +35,7 @@ epub_path = str(asset_folder / "long.epub")
 html_path = str(asset_folder / "long.html")
 md_path = str(asset_folder / "lz.md")
 ipynb_path = str(asset_folder / "long.ipynb")
+rst_path = str(asset_folder / "long.rst")
 txt_path = str(asset_folder / "long.txt")
 mp4_path = str(asset_folder / "jfk_30.mp4")
 
@@ -190,6 +191,13 @@ def test_md():
 
 def test_ipynb():
     root = ctrl.as_root_chunk(ipynb_path)
+    chunks = PandocEngine.run(root)
+    chunk = chunks[0]
+    assert isinstance(chunk, Chunk)
+
+
+def test_rst():
+    root = ctrl.as_root_chunk(rst_path)
     chunks = PandocEngine.run(root)
     chunk = chunks[0]
     assert isinstance(chunk, Chunk)
