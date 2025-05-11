@@ -4,6 +4,11 @@
 pip install ...
 ```
 
+Install the following system dependencies for the easyparser library:
+
+- `pandoc`: for parsing markup language (e.g. epub, html, rtf, rst, docx...)
+- `libreoffice`: for file conversion (e.g. doc, ppt, xls to docx, pptx, xlsx...)
+
 ## Features
 
 Library responsibility:

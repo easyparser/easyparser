@@ -128,7 +128,7 @@ def test_csv():
     assert isinstance(chunk, Chunk)
 
 
-def test_parse_json():
+def test_json():
     root = ctrl.as_root_chunk(json_path)
     chunks = JsonParser.run(root)
     chunk = chunks[0]
@@ -136,7 +136,7 @@ def test_parse_json():
     assert isinstance(chunk.content, str)
 
 
-def test_parse_toml():
+def test_toml():
     root = ctrl.as_root_chunk(toml_path)
     chunks = TomlParser.run(root)
     chunk = chunks[0]
@@ -144,7 +144,7 @@ def test_parse_toml():
     assert isinstance(chunk.content, str)
 
 
-def test_parse_yaml():
+def test_yaml():
     root = ctrl.as_root_chunk(yaml_path)
     chunks = YamlParser.run(root)
     chunk = chunks[0]

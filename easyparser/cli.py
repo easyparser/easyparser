@@ -63,6 +63,9 @@ def install_pandoc():
 
     try:
         pandoc_path = pypandoc.get_pandoc_path()
+        if not os.path.exists(pandoc_path):
+            pf = sys.platform
+            pandoc_path = os.path.join(pypandoc.DEFAULT_TARGET_FOLDER[pf], pandoc_path)
         click.echo(f"✅ pandoc is already installed at: {pandoc_path}")
         return
     except OSError:
@@ -71,13 +74,16 @@ def install_pandoc():
 
     # Install pandoc using pypandoc
     try:
-        from pypandoc.pandoc_download import download_pandoc
-
-        download_pandoc(delete_installer=True)
+        pypandoc.download_pandoc(delete_installer=True)
 
         # Verify installation
         try:
             pandoc_path = pypandoc.get_pandoc_path()
+            if not os.path.exists(pandoc_path):
+                pf = sys.platform
+                pandoc_path = os.path.join(
+                    pypandoc.DEFAULT_TARGET_FOLDER[pf], pandoc_path
+                )
             click.echo(f"✅ pandoc installed successfully at: {pandoc_path}")
         except OSError:
             click.echo("❌ Failed to verify pandoc installation after installing.")

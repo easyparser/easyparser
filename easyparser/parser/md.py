@@ -266,5 +266,19 @@ class Markdown(BaseOperation):
         return output
 
     @classmethod
-    def py_dependency(cls) -> list[str]:
-        return ["tree-sitter", "tree-sitter-markdown"]
+    def py_dependency(cls, missing_only: bool = False) -> list[str]:
+        if not missing_only:
+            return ["tree-sitter", "tree-sitter-markdown"]
+
+        missing = []
+        try:
+            import tree_sitter  # noqa: F401
+        except ImportError:
+            missing.append("tree-sitter")
+
+        try:
+            import tree_sitter_markdown  # noqa: F401
+        except ImportError:
+            missing.append("tree-sitter-markdown")
+
+        return missing

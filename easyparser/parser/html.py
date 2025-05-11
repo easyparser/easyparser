@@ -205,3 +205,7 @@ class PandocHtmlParser(BaseOperation):
                 Path(temp_file_path).unlink(missing_ok=True)
 
         return output
+
+    @classmethod
+    def py_dependency(cls) -> list[str]:
+        return ["beautifulsoup4", "pypandoc"]

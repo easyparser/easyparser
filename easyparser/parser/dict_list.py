@@ -38,8 +38,12 @@ class TomlParser(BaseOperation):
         """Load TOML data from a file or string into stringified Python dictionary"""
         try:
             import tomllib
+
+            _read_mode = "rb"
         except ImportError:
             import toml as tomllib
+
+            _read_mode = "r"
 
         if isinstance(chunks, Chunk):
             chunks = ChunkGroup([chunks])
@@ -47,7 +51,7 @@ class TomlParser(BaseOperation):
         output = ChunkGroup()
         for chunk in chunks:
             logger.info(f"Parsing {chunk.origin.location}")
-            with open(chunk.origin.location) as f:
+            with open(chunk.origin.location, mode=_read_mode) as f:
                 content = repr(tomllib.load(f))
             ch = Chunk(
                 ctype=CType.Div,

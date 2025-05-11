@@ -16,10 +16,42 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Development Status :: 2 - Pre-Alpha"
 ]
-dependencies = ["llm", "click"]
+dependencies = [
+  "llm",
+  "click",
+  "numpy",
+  "pypandoc",
+  "tree-sitter",
+  "tqdm",
+
+  # PDF
+  "img2table",
+  "pillow",
+  "rapid-layout",
+
+  # Image
+  "opencv-python",
+  "rapidocr",
+
+  # Office
+  "python-pptx",
+  "pypdfium2",
+  "openpyxl",
+
+  # HTML
+  "beautifulsoup4",
+
+  # Markdown
+  "tree-sitter-markdown",
+
+  # Audio
+  "openai-whisper",
+  "pydub",
+]
 
 [project.optional-dependencies]
 dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine", "papermill"]
+pdf-others = ["docling", "unstructured[pdf]", "sycamore"]
 
 [project.urls]
 Homepage = "https://github.com/easyparser/easyparser"
