@@ -615,6 +615,7 @@ class Chunk:
             return {
                 "id": self.id,
                 "mimetype": self.mimetype,
+                "ctype": self.ctype,
                 "content": self.content,
                 "text": self.text,
                 "parent": self.parent,
@@ -629,6 +630,7 @@ class Chunk:
         return {
             "id": self.id,
             "mimetype": self.mimetype,
+            "ctype": self.ctype,
             "content": self.content,
             "text": self.text,
             "parent": self.parent_id,
