@@ -199,11 +199,14 @@ class Chunk:
     def __repr__(self):
         return self.__str__()
 
-    def walk(self, depth: int = 0) -> Generator[tuple[int, "Chunk"], None, None]:
+    def walk(
+        self, depth: int = 0, include_siblings: bool = True
+    ) -> Generator[tuple[int, "Chunk"], None, None]:
         """Iterate depth and chunk in reading order, depth first, breadth second
 
         Args:
             depth: the current depth of the chunk in the tree
+            include_siblings: if True, include the siblings of the current chunk
 
         Yields:
             tuple[int, Chunk]: the depth and the chunk object
@@ -213,13 +216,16 @@ class Chunk:
 
         # Then yield all the children
         child = self.child
-        if child:
-            yield from child.walk(depth=depth + 1)
+        while child:
+            yield from child.walk(depth=depth + 1, include_siblings=False)
+            child = child.next
 
-        # Then yield next chunk (at the same level)
-        next_chunk = self.next
-        if next_chunk:
-            yield from next_chunk.walk(depth=depth)
+        if include_siblings:
+            # Finally yield all the siblings
+            sibling = self.next
+            while sibling:
+                yield from sibling.walk(depth=depth, include_siblings=False)
+                sibling = sibling.next
 
     @property
     def ctype(self):
