@@ -60,14 +60,14 @@ def plot_img(img_path: str, chunks: ChunkGroup, output_path: str):
     page_image_h, page_image_w = img.shape[:2]
 
     for chunk_id, chunk in enumerate(chunks):
-        chunk_type = chunk.metadata.get("label", "other")
+        chunk_type = chunk.ctype
         x1, y1, x2, y2 = chunk.origin.location["bbox"]
         x1 = x1 * page_image_w
         y1 = y1 * page_image_h
         x2 = x2 * page_image_w
         y2 = y2 * page_image_h
 
-        if chunk_type == "text":
+        if chunk_type in ["text", "para", "list"]:
             color = (0, 0, 255)
         else:
             color = (255, 0, 0)

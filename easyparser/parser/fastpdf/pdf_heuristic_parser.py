@@ -92,6 +92,9 @@ def get_mode_font_weight(
 
 def render_emphasis(line: dict[str, Any]) -> str:
     """Render the emphasis for a line."""
+    if "md" not in line:
+        return "".join(span["text"] for span in line["spans"])
+
     line_text = ""
     is_line_special = line["md"]["bold"] or line["md"]["italic"]
     for span in line["spans"]:
