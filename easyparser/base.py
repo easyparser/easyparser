@@ -734,9 +734,10 @@ class Chunk:
             child.apply(fn, depth=depth + 1)
             child = child.next
 
-    def print_graph(self):
+    def print_graph(self, filter_by_ctype: str | None = None):
         def print_node(node, depth=0):
-            print("    " * depth, node)
+            if not filter_by_ctype or node.ctype == filter_by_ctype:
+                print("    " * depth, node)
 
         self.apply(print_node)
 

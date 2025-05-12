@@ -102,6 +102,18 @@ def assign_lines_to_blocks(
                     block["lines"].append(line)
                     assigned_line_indices.add(line_idx)
 
+            if not block["lines"]:
+                # run verification again to add empty flag
+                # for later OCR
+                is_empty = True
+                for line in lines:
+                    overlap_ratio = get_overlap_ratio(block_bbox, line_bbox)
+                    if overlap_ratio > iou_threshold:
+                        is_empty = False
+                        break
+
+                block["is_empty"] = is_empty
+
     left_over_line_indices = set(range(len(lines))) - assigned_line_indices
     return blocks_by_class, left_over_line_indices
 
@@ -111,7 +123,7 @@ def is_ocr_required(blocks: list[dict[str, Any]], ocr_thres=0.75) -> bool:
     line_counts = []
     for block in blocks:
         if block["type"] in TEXT_CLASS_LIST:
-            line_counts.append(len(block["lines"]))
+            line_counts.append(1 if block.get("is_empty") else len(block["lines"]))
 
     num_blocks = len(line_counts)
     if num_blocks == 0:
