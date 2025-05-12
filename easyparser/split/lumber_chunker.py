@@ -34,6 +34,7 @@ SPLIT_SCHEMA = {
     "type": "object",
 }
 DEFAULT_CHUNK_JOIN_CHAR = " "
+MIN_SPLITS_TO_REPORT_PROGRESS = 10
 
 
 def _add_id_to_splits(splits: List[str]) -> List[str]:
@@ -114,6 +115,16 @@ class LumberChunker(BaseOperation):
                     keep_separator=True,
                     is_separator_regex=False,
                 )
+                # Show progress bar if there are enough splits
+                if len(splits) >= MIN_SPLITS_TO_REPORT_PROGRESS and verbose:
+                    progress_bar = tqdm(
+                        total=len(splits),
+                        desc="Processing splits",
+                        unit="split",
+                    )
+                else:
+                    progress_bar = None
+
                 if len(splits) <= 1:
                     # If the split is too small, just return the original chunk
                     split_chunks.append(child_chunk.clone(no_relation=True))
@@ -179,6 +190,8 @@ class LumberChunker(BaseOperation):
                         min(split_index, num_splits - 1)
                     ]
                     current_index = split_index
+                    if progress_bar:
+                        progress_bar.update(current_index - progress_bar.n)
 
             new_root = root.clone(no_relation=True)
             new_root.add_children(split_chunks)
