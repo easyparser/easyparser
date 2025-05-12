@@ -3,13 +3,16 @@ from collections import defaultdict
 
 import pypdfium2
 
+from .util import crop_img_and_export_bytes
 
-def get_images_pdfium(pdf_path: str):
+
+def get_images_pdfium(pdf_path: str, render_scale: float = 1.5):
     pdf = pypdfium2.PdfDocument(pdf_path)
     output_images = defaultdict(list)
 
     for idx in range(len(pdf)):
         page = pdf.get_page(idx)
+        page_img = page.render(scale=render_scale).to_numpy()
 
         page_bbox: list[float] = page.get_bbox()
         page_width = math.ceil(abs(page_bbox[2] - page_bbox[0]))
@@ -43,6 +46,10 @@ def get_images_pdfium(pdf_path: str):
                         "type": "image",
                         "bbox": scaled_bbox,
                         "text": "",
+                        "image": crop_img_and_export_bytes(
+                            page_img,
+                            scaled_bbox,
+                        ),
                     }
                 )
             except Exception as exc:

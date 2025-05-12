@@ -168,7 +168,9 @@ class FastPDF(BaseOperation):
         chunk: Chunk | ChunkGroup,
         use_layout_parser: bool = True,
         render_full_page: bool = False,
+        render_scale: float = 1.5,
         extract_table: bool = True,
+        extract_image: bool = True,
         multiprocessing_executor: ProcessPoolExecutor | None = None,
         debug_path: str | None = None,
         **kwargs,
@@ -195,14 +197,18 @@ class FastPDF(BaseOperation):
             if use_layout_parser or render_full_page:
                 pages = partition_pdf_layout(
                     str(pdf_root.origin.location),
+                    render_scale=render_scale,
                     render_full_page=render_full_page,
+                    extract_image=extract_image,
                     debug_path=debug_path,
                 )
             else:
                 pages = parition_pdf_heuristic(
                     str(pdf_root.origin.location),
+                    render_scale=render_scale,
                     executor=multiprocessing_executor,
                     extract_table=extract_table,
+                    extract_image=extract_image,
                 )
 
             for page in pages:

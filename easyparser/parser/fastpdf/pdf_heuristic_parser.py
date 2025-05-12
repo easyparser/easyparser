@@ -93,7 +93,7 @@ def get_mode_font_weight(
 def render_emphasis(line: dict[str, Any]) -> str:
     """Render the emphasis for a line."""
     if "md" not in line:
-        return "".join(span["text"] for span in line["spans"])
+        return "".join(span["text"] for span in line["spans"]).strip()
 
     line_text = ""
     is_line_special = line["md"]["bold"] or line["md"]["italic"]
@@ -193,7 +193,8 @@ def add_markdown_format(
                 line_text = render_emphasis(line)
                 line_text += LINE_JOIN_CHAR
                 block_text += line_text
-            block_text = block_text.rstrip()
+
+            block_text = block_text.replace("\n", " ").replace("\r", "").strip()
 
             is_heading_block = (
                 all(line["md"]["bold"] for line in block["lines"])
@@ -249,7 +250,9 @@ def parsed_pdf_to_markdown(
 def parition_pdf_heuristic(
     doc_path: Path | str,
     executor: ProcessPoolExecutor | None = None,
+    render_scale: float = 1.5,
     extract_table=False,
+    extract_image=True,
 ) -> str:
     """Convert PDF document to Markdown."""
     # Parse the PDF with pdftext and convert it to Markdown.
@@ -260,7 +263,11 @@ def parition_pdf_heuristic(
         workers=None,
     )
     pages = parsed_pdf_to_markdown(pages)
-    all_images = get_images_pdfium(doc_path)
+    all_images = {}
+    all_tables = {}
+
+    if extract_image:
+        all_images = get_images_pdfium(doc_path, render_scale=render_scale)
 
     if extract_table:
         all_tables = get_tables_img2table(doc_path, executor=executor)

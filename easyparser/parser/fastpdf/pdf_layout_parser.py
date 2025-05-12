@@ -286,6 +286,7 @@ def partition_pdf_layout(
     render_full_page: bool = False,
     optimize_2d_text: bool = False,
     use_emphasis_metadata: bool = True,
+    extract_image: bool = True,
     debug_path: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     doc_path = Path(doc_path)
@@ -459,7 +460,7 @@ def partition_pdf_layout(
                     "blocks": render_blocks(
                         sorted_blocks,
                         page_shape=(page_width, page_height),
-                        page_img=page_img,
+                        page_img=page_img if extract_image else None,
                         optimize_2d_text=optimize_2d_text,
                         is_ocr=is_ocr,
                         use_emphasis_metadata=use_emphasis_metadata,

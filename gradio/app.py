@@ -26,7 +26,7 @@ ctrl = Controller()
 DEBUG_DIR = Path("debug")
 
 
-def format_chunk(chunk, include_image=False):
+def format_chunk(chunk, include_image=True):
     if chunk.ctype == CType.Root or not chunk.content:
         return ""
 
@@ -74,6 +74,9 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
         chunks = method.run(
             root,
             render_full_page=use_full_page,
+            use_layout_parser=True,
+            extract_image=True,
+            extract_table=True,
             debug_path=DEBUG_DIR,
         )
     else:
