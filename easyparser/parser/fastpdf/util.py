@@ -1,5 +1,6 @@
 import base64
 from collections import defaultdict
+from enum import StrEnum
 from typing import Any
 
 import cv2
@@ -19,6 +20,14 @@ LINE_BREAK_CONFLICT_THRESHOLD = 2
 LINE_BREAK_TOLERANCE_THRESHOLD = 8
 
 VIZ_RECTANGLE_THICKNESS = 2
+
+
+class OCRMode(StrEnum):
+    """OCR mode for PDF layout parser."""
+
+    AUTO = "auto"
+    OFF = "off"
+    ON = "on"
 
 
 def draw_bboxes(img, bboxes, color=(0, 255, 0)):

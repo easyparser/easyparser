@@ -4,6 +4,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
 from easyparser.mime import MimeType, mime_pdf
+from easyparser.parser.fastpdf.util import OCRMode
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +172,7 @@ class FastPDF(BaseOperation):
         render_scale: float = 1.5,
         extract_table: bool = True,
         extract_image: bool = True,
+        ocr_mode: str | OCRMode = OCRMode.AUTO,
         multiprocessing_executor: ProcessPoolExecutor | None = None,
         debug_path: str | None = None,
         **kwargs,
@@ -200,6 +202,7 @@ class FastPDF(BaseOperation):
                     render_scale=render_scale,
                     render_full_page=render_full_page,
                     extract_image=extract_image,
+                    ocr_mode=ocr_mode,
                     debug_path=debug_path,
                 )
             else:

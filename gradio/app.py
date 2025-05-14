@@ -54,7 +54,9 @@ def format_chunk(chunk, include_image=True):
     return block_text
 
 
-def convert_document(pdf_path, method, use_full_page=False, enabled=True):
+def convert_document(
+    pdf_path, method, use_full_page=False, force_ocr=False, enabled=True
+):
     if enabled:
         print("Processing file", pdf_path, "with method", method)
     else:
@@ -74,6 +76,7 @@ def convert_document(pdf_path, method, use_full_page=False, enabled=True):
         chunks = method.run(
             root,
             render_full_page=use_full_page,
+            ocr_mode="auto" if not force_ocr else "on",
             use_layout_parser=True,
             extract_image=True,
             extract_table=True,
@@ -230,10 +233,15 @@ with gr.Blocks(
                 value=["easyparser_fastpdf"],
                 multiselect=True,
             )
-            full_page_render = gr.Checkbox(
-                label="Use full page layout-preserved rendering",
-                value=False,
-            )
+            with gr.Row():
+                full_page_render = gr.Checkbox(
+                    label="Use full page layout-preserved rendering",
+                    value=False,
+                )
+                force_page_ocr = gr.Checkbox(
+                    label="Force OCR",
+                    value=False,
+                )
             with gr.Row():
                 convert_btn = gr.Button("Convert", variant="primary", scale=2)
                 clear_btn = gr.ClearButton(value="Clear", scale=1)
@@ -314,11 +322,14 @@ with gr.Blocks(
 
             return msg
 
-        def process_method(input_file, selected_methods, use_full_page, method=method):
+        def process_method(
+            input_file, selected_methods, use_full_page, force_ocr, method=method
+        ):
             return convert_document(
                 input_file,
                 method=method,
                 use_full_page=use_full_page,
+                force_ocr=force_ocr,
                 enabled=method in selected_methods,
             )
 
@@ -327,10 +338,10 @@ with gr.Blocks(
             inputs=[methods],
             outputs=[progress_status],
         ).then(
-            fn=lambda input_file, methods, use_full_page, method=method: process_method(
-                input_file, methods, use_full_page, method
+            fn=lambda input_file, methods, use_full_page, force_ocr, method=method: process_method(  # noqa: E501
+                input_file, methods, use_full_page, force_ocr, method
             ),
-            inputs=[input_file, methods, full_page_render],
+            inputs=[input_file, methods, full_page_render, force_page_ocr],
             outputs=output_components[idx * 4 : (idx + 1) * 4],
         )
 

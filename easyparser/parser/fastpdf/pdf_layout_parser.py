@@ -15,6 +15,7 @@ from easyparser.parser.fastpdf.pdf_heuristic_parser import (
     render_emphasis,
 )
 from easyparser.parser.fastpdf.util import (
+    OCRMode,
     crop_img_and_export_base64,
     crop_img_and_export_bytes,
     fix_unicode_encoding,
@@ -299,6 +300,7 @@ def partition_pdf_layout(
     optimize_2d_text: bool = False,
     use_emphasis_metadata: bool = True,
     extract_image: bool = True,
+    ocr_mode: str | OCRMode = OCRMode.AUTO,
     debug_path: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     doc_path = Path(doc_path)
@@ -345,8 +347,8 @@ def partition_pdf_layout(
 
         if render_full_page:
             # use OCR to get text if lines is empty
-            is_ocr = len(lines) == 0
-            if is_ocr:
+            is_ocr = len(lines) == 0 and ocr_mode != OCRMode.OFF
+            if is_ocr or ocr_mode == OCRMode.ON:
                 lines = get_text_ocr(page_img, page_idx, debug_path)
 
             if not lines:
@@ -442,8 +444,8 @@ def partition_pdf_layout(
                 all_blocks = []
 
             # check if OCR is required
-            is_ocr = is_ocr_required(all_blocks)
-            if is_ocr:
+            is_ocr = is_ocr_required(all_blocks) and ocr_mode != OCRMode.OFF
+            if is_ocr or ocr_mode == OCRMode.ON:
                 ocr_lines = get_text_ocr(page_img, page_idx, debug_path)
                 # assign lines to blocks
                 blocks_by_class, left_over_line_indices = assign_lines_to_blocks(
