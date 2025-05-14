@@ -47,10 +47,10 @@ def guess_mimetype(path, default: str = "application/octet-stream") -> str:
         # .org is usually mistaken as markdown and html...
         return MimeType.org
 
-    if magic:
-        return magic.from_file(path, mime=True)
     if _m:
         return _m.identify_path(path).output.mime_type
+    if magic:
+        return magic.from_file(path, mime=True)
 
     guessed = _mimetypes_guess_file(path)[0]
     if guessed:

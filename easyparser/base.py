@@ -89,6 +89,7 @@ class CType:
                 "figure",
                 "code",
                 "div",
+                "root",
             ]
 
         return cls.__available_types
@@ -648,11 +649,20 @@ class Chunk:
             "history": self._history,
         }
 
-    def save(self):
-        """Save the chunk into the directory"""
+    def save(self, relations: bool = True):
+        """Save the chunk into the directory
+
+        Args:
+            relations: if True, save the relations (parent, child, next, prev) as
+                well. If False, only save the chunk itself.
+        """
         if self._store is None:
             raise ValueError("Must provide `store` to save the chunk")
         self._store.save(self)
+
+        if relations:
+            for _, child in self.walk():
+                self._store.save(child)
 
     def merge(self, chunk: "Chunk"):
         """Merge the content, metadata, and child of other chunk to this chunk
@@ -734,9 +744,12 @@ class Chunk:
             child.apply(fn, depth=depth + 1)
             child = child.next
 
-    def print_graph(self, filter_by_ctype: str | None = None):
+    def print_graph(self, ctype: str | None | list = None):
+        if isinstance(ctype, str):
+            ctype = [ctype]
+
         def print_node(node, depth=0):
-            if not filter_by_ctype or node.ctype == filter_by_ctype:
+            if not ctype or node.ctype in ctype:
                 print("    " * depth, node)
 
         self.apply(print_node)

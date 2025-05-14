@@ -1,3 +1,4 @@
+import logging
 import math
 from pathlib import Path
 from typing import Any, Optional
@@ -30,6 +31,7 @@ from easyparser.parser.fastpdf.util import (
     union_bbox,
 )
 
+logger = logging.getLogger(__name__)
 QUOTE_LOOSEBOX: bool = True
 SUPERSCRIPT_HEIGHT_THRESHOLD: float = 0.7
 LINE_DISTANCE_THRESHOLD: float = 0.1
@@ -415,7 +417,7 @@ def partition_pdf_layout(
                     }
                 )
 
-            print(
+            logger.debug(
                 f"Page {page_idx}: {len(detected_boxes)} "
                 f"boxes detected in {elapsed_time:.2f} seconds"
             )

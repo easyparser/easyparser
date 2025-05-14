@@ -1,8 +1,11 @@
 # flake8: noqa: E501
+import logging
+
 from easyparser.base import BaseOperation, Chunk, ChunkGroup
 from easyparser.mime import MimeType
 from easyparser.models import completion, parse_json_from_text
 
+logger = logging.getLogger(__name__)
 CAPTION_PROMPT = """Decompose the "Input" into clear and simple propositions, ensuring they are interpretable out of context.
 1. Split compound sentence into simple sentences. Maintain the original phrasing from the input
 whenever possible.
@@ -65,6 +68,9 @@ def get_proposition(chunk: Chunk, model: str | None = None) -> list[Chunk]:
     """
     if chunk.text:
         props = completion_json(CAPTION_PROMPT.format(text=chunk.text), alias=model)
+        logger.debug(f"Chunk ID: {chunk.id}")
+        logger.debug(f"Text: {chunk.text}")
+        logger.debug(f"Propositions: {props}")
         propositions = [
             Chunk(
                 mimetype=MimeType.text, content=prop, metadata={"originals": [chunk.id]}
@@ -75,6 +81,9 @@ def get_proposition(chunk: Chunk, model: str | None = None) -> list[Chunk]:
         content = chunk.content
         if isinstance(content, str) and content:
             props = completion_json(CAPTION_PROMPT.format(text=content, alias=model))
+            logger.debug(f"Chunk ID: {chunk.id}")
+            logger.debug(f"Text: {chunk.content}")
+            logger.debug(f"Propositions: {props}")
             propositions = [
                 Chunk(
                     mimetype=MimeType.text,
