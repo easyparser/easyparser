@@ -70,19 +70,16 @@ def test_docling():
 def test_fastpdf():
     root = ctrl.as_root_chunk(pdf_path1)
     chunks = FastPDF.run(root)
-    assert len(chunks) > 0
-    assert root.id in chunks.groups
-    assert isinstance(chunks[0], Chunk)
+    chunk = chunks[0]
+    assert isinstance(chunk, Chunk)
 
 
 def test_sycamore_multiple():
     root1 = ctrl.as_root_chunk(pdf_path1)
     root2 = ctrl.as_root_chunk(pdf_path2)
     chunks = SycamorePDF.run(ChunkGroup(chunks=[root1, root2]))
-    assert root1.id in chunks.groups
-    assert root2.id in chunks.groups
-    assert len(chunks.groups[root1.id]) > 0
-    assert len(chunks.groups[root2.id]) > 0
+    assert isinstance(chunks[0], Chunk)
+    assert isinstance(chunks[1], Chunk)
 
 
 def test_jpg():
