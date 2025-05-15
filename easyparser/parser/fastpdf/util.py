@@ -483,13 +483,11 @@ def pages_to_markdown(pages: list[dict[str, Any]]) -> list[str]:
     return md_text
 
 
-def is_2d_layout(spans, thres=0.5) -> bool:
-    """
-    Check if the combined area of the spans
-    is greater than the threshold of union area
-    """
-    if len(spans) == 0:
-        return False
+def get_span_coverage_ratio(
+    spans: list[dict[str, Any]],
+):
+    if not spans:
+        return 0.0
 
     combined_bbox = union_bbox([span["bbox"] for span in spans])
     combined_area = get_bbox_area(combined_bbox)
@@ -498,8 +496,42 @@ def is_2d_layout(spans, thres=0.5) -> bool:
         return False
 
     sum_span_area = sum(get_bbox_area(span["bbox"]) for span in spans)
-    ratio = sum_span_area / combined_area
-    return ratio < thres
+    area_ratio = sum_span_area / combined_area
+    return area_ratio
+
+
+def is_mostly_short_lines(
+    lines: list[dict[str, Any]],
+    width_thresh: float = 0.6,
+    ratio_thresh: float = 0.15,
+):
+    combined_bbox = union_bbox([line["bbox"] for line in lines])
+    union_bbox_w = get_bbox_w(combined_bbox)
+    short_line_ratio = len(
+        [
+            get_bbox_w(line["bbox"])
+            for line in lines
+            if get_bbox_w(line["bbox"]) < union_bbox_w * width_thresh
+        ]
+    ) / len(lines)
+    return short_line_ratio >= ratio_thresh
+
+
+def is_2d_layout(
+    spans: list[dict[str, Any]],
+    lines: list[dict[str, Any]] | None = None,
+    area_thres=0.5,
+) -> bool:
+    """
+    Check if the combined area of the spans
+    is greater than the threshold of union area
+    """
+    if len(spans) == 0:
+        return False
+
+    return get_span_coverage_ratio(spans) < area_thres and (
+        not lines or is_mostly_short_lines(lines)
+    )
 
 
 def crop_img_and_export_base64(img: np.ndarray, box: list[float]) -> str:

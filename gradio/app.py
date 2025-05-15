@@ -78,6 +78,7 @@ def convert_document(
             render_full_page=use_full_page,
             ocr_mode="auto" if not force_ocr else "on",
             use_layout_parser=True,
+            render_2d_text_paragraph=True,
             extract_image=True,
             extract_table=True,
             debug_path=DEBUG_DIR,
@@ -97,8 +98,12 @@ def convert_document(
         max_page = max(max_page, chunk.origin.location["page"])
 
     rendered_texts = [format_chunk(chunk) for chunk in chunks]
+    rendered_texts_no_img = [
+        format_chunk(chunk, include_image=False) for chunk in chunks
+    ]
     # remove empty strings
     combined_text = "\n\n".join([text for text in rendered_texts if text])
+    combined_text_no_img = "\n\n".join([text for text in rendered_texts_no_img if text])
 
     duration = time.time() - start
     duration_per_page = duration / max_page
@@ -122,7 +127,7 @@ def convert_document(
     return (
         duration_message,
         combined_text,
-        combined_text,
+        combined_text_no_img,
         debug_image_paths,
     )
 

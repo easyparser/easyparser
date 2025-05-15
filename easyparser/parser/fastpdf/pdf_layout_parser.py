@@ -210,6 +210,7 @@ def render_blocks(
     optimize_2d_text: bool = True,
     is_ocr: bool = False,
     export_raw_img: bool = True,
+    render_2d_text_paragraph: bool = True,
     use_emphasis_metadata: bool = True,
 ) -> list[dict[str, Any]]:
     """Render blocks with metadata to final text."""
@@ -222,7 +223,14 @@ def render_blocks(
 
         block_lines = block.get("lines", [])
         block_spans = [span for line in block_lines for span in line["spans"]]
-        is_text_2d = len(block_lines) > MIN_NUM_LINES_2D and is_2d_layout(block_spans)
+        is_text_2d = (
+            render_2d_text_paragraph
+            and len(block_lines) > MIN_NUM_LINES_2D
+            and is_2d_layout(
+                spans=block_spans,
+                lines=block_lines,
+            )
+        )
         img_content = None
 
         if class_name in IMAGE_CLASS_LIST or (class_name == "text" and is_text_2d):
@@ -250,7 +258,7 @@ def render_blocks(
                 optimize_cols=optimize_2d_text or is_equation,
             )
             block_text = fix_unicode_encoding(block_text).rstrip()
-            if page_img is not None:
+            if page_img is not None and class_name != "text":
                 img_content = (
                     crop_img_and_export_bytes(page_img, block["bbox"])
                     if export_raw_img
@@ -300,6 +308,7 @@ def partition_pdf_layout(
     render_scale: float = 1.5,
     render_full_page: bool = False,
     optimize_2d_text: bool = False,
+    render_2d_text_paragraph: bool = True,
     use_emphasis_metadata: bool = True,
     extract_image: bool = True,
     ocr_mode: str | OCRMode = OCRMode.AUTO,
@@ -479,6 +488,7 @@ def partition_pdf_layout(
                         page_img=page_img if extract_image else None,
                         optimize_2d_text=optimize_2d_text,
                         is_ocr=is_ocr,
+                        render_2d_text_paragraph=render_2d_text_paragraph,
                         use_emphasis_metadata=use_emphasis_metadata,
                     ),
                     "page": page_idx,
