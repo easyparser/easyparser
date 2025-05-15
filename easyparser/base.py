@@ -69,6 +69,7 @@ class CType:
     Figure = "figure"
     Code = "code"
     Div = "div"  # logically organized (e.g. a pptx slide)
+    Page = "page"  # logically organized (e.g. a PDF page)
 
     # File-level and above chunk
     Root = "root"
@@ -89,6 +90,7 @@ class CType:
                 "figure",
                 "code",
                 "div",
+                "page",
                 "root",
             ]
 

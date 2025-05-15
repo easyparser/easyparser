@@ -311,6 +311,7 @@ def partition_pdf_layout(
     render_2d_text_paragraph: bool = True,
     use_emphasis_metadata: bool = True,
     extract_image: bool = True,
+    extract_page: bool = False,
     ocr_mode: str | OCRMode = OCRMode.AUTO,
     debug_path: Path | str | None = None,
 ) -> list[dict[str, Any]]:
@@ -480,6 +481,23 @@ def partition_pdf_layout(
                 all_blocks,
                 key=get_block_order,
             )
+            # extract page text / image if specified
+            if extract_page:
+                # render the whole page with layout-preserving text
+                page_text = spans_to_layout_text(
+                    lines=lines,
+                    filter_invalid_spans=not is_ocr,
+                )
+                page_dict = {
+                    "page_image": crop_img_and_export_bytes(page_img, [0, 0, 1, 1]),
+                    "page_text": "```{}\n{}\n```".format(
+                        "page",
+                        fix_unicode_encoding(page_text),
+                    ),
+                }
+            else:
+                page_dict = {}
+
             output_pages.append(
                 {
                     "blocks": render_blocks(
@@ -492,6 +510,7 @@ def partition_pdf_layout(
                         use_emphasis_metadata=use_emphasis_metadata,
                     ),
                     "page": page_idx,
+                    **page_dict,
                 }
             )
 

@@ -173,6 +173,7 @@ class FastPDF(BaseOperation):
         render_scale: float = 1.5,
         extract_table: bool = True,
         extract_image: bool = True,
+        extract_page: bool = False,
         ocr_mode: str | OCRMode = OCRMode.AUTO,
         multiprocessing_executor: ProcessPoolExecutor | None = None,
         debug_path: str | None = None,
@@ -204,6 +205,7 @@ class FastPDF(BaseOperation):
                     render_full_page=render_full_page,
                     render_2d_text_paragraph=render_2d_text_paragraph,
                     extract_image=extract_image,
+                    extract_page=extract_page,
                     ocr_mode=ocr_mode,
                     debug_path=debug_path,
                 )
@@ -214,10 +216,12 @@ class FastPDF(BaseOperation):
                     executor=multiprocessing_executor,
                     extract_table=extract_table,
                     extract_image=extract_image,
+                    extract_page=extract_page,
                 )
 
             for page in pages:
                 page_label = page["page"] + 1
+                page_chunks = []
                 for block in page["blocks"]:
                     text = block["text"]
                     image_content = block.get("image")
@@ -245,7 +249,37 @@ class FastPDF(BaseOperation):
                         parent=pdf_root,
                         origin=origin,
                     )
+                    page_chunks.append(c)
+
+                if extract_page:
+                    page_image = page.get("page_image")
+                    page_text = page.get("page_text")
+                    if page_image:
+                        mimetype = "image/png"
+                        page_content = page_image
+                    else:
+                        mimetype = MimeType.text
+                        page_content = page_text
+                    origin = mime_pdf.to_origin(
+                        pdf_root,
+                        0,
+                        0,
+                        1,
+                        1,
+                        page_label,
+                    )
+                    c = Chunk(
+                        ctype=CType.Page,
+                        mimetype=mimetype,
+                        content=page_content,
+                        text=page_text,
+                        parent=pdf_root,
+                        origin=origin,
+                    )
+                    c.add_children(page_chunks)
                     result.append(c)
+                else:
+                    result.extend(page_chunks)
 
             pdf_root.add_children(result)
             output.append(pdf_root)

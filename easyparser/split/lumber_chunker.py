@@ -57,7 +57,9 @@ def _get_cumulative_token_counts(splits: List[str], length_fn: Callable) -> List
 
 def _is_mime_text(chunk: Chunk) -> bool:
     return (
-        chunk.mimetype == MimeType.text and chunk.content and chunk.ctype != CType.Root
+        chunk.mimetype == MimeType.text
+        and chunk.content
+        and chunk.ctype not in [CType.Root, CType.Div, CType.Page]
     )
 
 

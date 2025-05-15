@@ -124,7 +124,7 @@ class TOCBuilder(BaseOperation):
             for _, child_chunk in root.walk():
                 new_child_chunk = child_chunk.clone(no_relation=True)
 
-                if new_child_chunk.ctype == CType.Root:
+                if new_child_chunk.ctype in [CType.Root, CType.Div, CType.Page]:
                     continue
 
                 if new_child_chunk.ctype == CType.Header:

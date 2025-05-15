@@ -251,8 +251,9 @@ def parition_pdf_heuristic(
     doc_path: Path | str,
     executor: ProcessPoolExecutor | None = None,
     render_scale: float = 1.5,
-    extract_table=False,
-    extract_image=True,
+    extract_table: bool = False,
+    extract_image: bool = True,
+    extract_page: bool = False,
 ) -> str:
     """Convert PDF document to Markdown."""
     # Parse the PDF with pdftext and convert it to Markdown.
@@ -266,8 +267,13 @@ def parition_pdf_heuristic(
     all_images = {}
     all_tables = {}
 
-    if extract_image:
-        all_images = get_images_pdfium(doc_path, render_scale=render_scale)
+    if extract_image or extract_page:
+        page_images, all_images = get_images_pdfium(
+            doc_path,
+            render_scale=render_scale,
+        )
+    else:
+        page_images = []
 
     if extract_table:
         all_tables = get_tables_img2table(doc_path, executor=executor)
@@ -282,6 +288,10 @@ def parition_pdf_heuristic(
                 text_blocks,
                 table_blocks,
             )
+
+        if extract_page:
+            page["page_image"] = page_images[idx]
+            page["page_text"] = f"Page {idx}"
 
         page["blocks"] += image_blocks
         page.pop("refs", None)
