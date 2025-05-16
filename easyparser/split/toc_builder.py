@@ -146,6 +146,13 @@ class TOCBuilder(BaseOperation):
                     cur_header_chunk.text = None
                     cur_header_children = []
                 else:
+                    if (
+                        new_child_chunk.ctype == CType.Header
+                        and increment_header_id in to_remove_header_ids
+                    ):
+                        # change ctype to Para
+                        new_child_chunk.ctype = CType.Para
+
                     if cur_header_chunk:
                         cur_header_children.append(new_child_chunk)
                     else:

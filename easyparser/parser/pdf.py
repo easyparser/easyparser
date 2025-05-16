@@ -133,9 +133,12 @@ class SycamorePDF(BaseOperation):
 
                 r = Chunk(
                     mimetype=mimetype,
-                    ctype=cls._label_mapping.get(e.type, "text"),
+                    ctype=cls._label_mapping.get(e.type, CType.Para),
                     content=content,
-                    text=text,
+                    # if mimetype is text, it is already in content
+                    # content is None will allow .render("markdown")
+                    # to work correctly
+                    text=text if mimetype != MimeType.text else None,
                     parent=pdf_root,
                     origin=origin,
                 )
@@ -242,10 +245,10 @@ class FastPDF(BaseOperation):
                         page_label,
                     )
                     c = Chunk(
-                        ctype=cls._label_mapping.get(block["type"], "text"),
+                        ctype=cls._label_mapping.get(block["type"], CType.Para),
                         mimetype=mimetype,
                         content=content,
-                        text=text,
+                        text=text if mimetype != MimeType.text else None,
                         parent=pdf_root,
                         origin=origin,
                     )
@@ -437,10 +440,10 @@ class UnstructuredPDF(BaseOperation):
 
                 result.append(
                     Chunk(
-                        ctype=cls._label_mapping.get(e.category, "text"),
+                        ctype=cls._label_mapping.get(e.category, CType.Para),
                         mimetype=mimetype,
                         content=content,
-                        text=text,
+                        text=text if mimetype != MimeType.text else None,
                         parent=pdf_root,
                         origin=origin,
                         metadata={"lang": e.metadata.languages},
@@ -592,7 +595,7 @@ class DoclingPDF(BaseOperation):
                     ctype=cls._label_mapping.get(e.label, CType.Para),
                     mimetype=mimetype,
                     content=content,
-                    text=text,
+                    text=text if mimetype != MimeType.text else None,
                     parent=parent_chunk_stacks[-1],
                     origin=mime_pdf.to_origin(pdf_root, x1, x2, y1, y2, page_no),
                 )
