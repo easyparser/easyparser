@@ -92,6 +92,8 @@ def get_mode_font_weight(
                 if span["font"]["weight"] > 0
             ]
         )
+    else:
+        font_weights = []
 
     font_weights = np.round(font_weights).astype(int)
     try:
