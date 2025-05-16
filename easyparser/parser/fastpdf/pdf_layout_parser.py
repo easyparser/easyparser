@@ -144,7 +144,7 @@ def do_ocr_page(
     spans = []
 
     if ocr_result.boxes is None or ocr_result.txts is None:
-        print(f"No OCR result on page {page_idx}")
+        logger.debug(f"No OCR result on page {page_idx}")
         return spans
 
     for bbox, text in zip(ocr_result.boxes, ocr_result.txts):
@@ -162,7 +162,9 @@ def do_ocr_page(
     if debug_path is not None:
         ocr_result.vis(debug_path / f"ocr_page_{page_idx}.png")
 
-    print(f"OCR elapsed time on page {page_idx}: {ocr_result.elapse:.2f} seconds")
+    logger.debug(
+        f"OCR elapsed time on page {page_idx}: {ocr_result.elapse:.2f} seconds"
+    )
     return spans
 
 

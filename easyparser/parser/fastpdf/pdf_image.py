@@ -1,9 +1,12 @@
+import logging
 import math
 from collections import defaultdict
 
 import pypdfium2
 
 from .util import crop_img_and_export_bytes
+
+logger = logging.getLogger(__name__)
 
 
 def get_images_pdfium(pdf_path: str, render_scale: float = 1.5):
@@ -60,7 +63,7 @@ def get_images_pdfium(pdf_path: str, render_scale: float = 1.5):
                     }
                 )
             except Exception as exc:
-                print(f"pdfium Image extraction failure: {exc}")
+                logger.debug(f"pdfium Image extraction failure: {exc}")
 
     pdf.close()
     return page_images, output_images

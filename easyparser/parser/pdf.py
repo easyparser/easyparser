@@ -4,7 +4,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
 from easyparser.mime import MimeType, mime_pdf
-from easyparser.parser.fastpdf.util import OCRMode
+from easyparser.parser.fastpdf.util import OCRMode, ParserPreset
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +178,7 @@ class FastPDF(BaseOperation):
         extract_image: bool = True,
         extract_page: bool = False,
         ocr_mode: str | OCRMode = OCRMode.AUTO,
+        preset: str | ParserPreset | None = None,
         multiprocessing_executor: ProcessPoolExecutor | None = None,
         debug_path: str | None = None,
         **kwargs,
@@ -192,6 +193,37 @@ class FastPDF(BaseOperation):
 
         if isinstance(chunk, Chunk):
             chunk = ChunkGroup(chunks=[chunk])
+
+        # resolve parser preset if specified
+        if preset == ParserPreset.BEST:
+            render_full_page = False
+            use_layout_parser = True
+            extract_image = True
+            ocr_mode = OCRMode.AUTO
+        elif preset == ParserPreset.BEST_NO_OCR:
+            render_full_page = False
+            use_layout_parser = True
+            extract_image = True
+            ocr_mode = OCRMode.OFF
+        elif preset == ParserPreset.FAST:
+            render_full_page = False
+            use_layout_parser = False
+            extract_image = False
+            extract_table = False
+            ocr_mode = OCRMode.OFF
+        elif preset == ParserPreset.FAST_2D:
+            render_full_page = True
+            ocr_mode = OCRMode.AUTO
+
+        logger.debug(
+            f"Using preset: {preset}, "
+            f"Parser settings: "
+            f"render_full_page={render_full_page}, "
+            f"use_layout_parser={use_layout_parser}, "
+            f"extract_image={extract_image}, "
+            f"extract_table={extract_table}, "
+            f"ocr_mode={ocr_mode}, "
+        )
 
         output = ChunkGroup()
         for pdf_root in chunk:

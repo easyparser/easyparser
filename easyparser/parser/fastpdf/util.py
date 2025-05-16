@@ -1,10 +1,13 @@
 import base64
+import logging
 from collections import defaultdict
 from enum import StrEnum
 from typing import Any
 
 import cv2
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 SPAN_JOIN_CHAR = " "
 
@@ -28,6 +31,13 @@ class OCRMode(StrEnum):
     AUTO = "auto"
     OFF = "off"
     ON = "on"
+
+
+class ParserPreset(StrEnum):
+    FAST = "fast"
+    FAST_2D = "fast_2d"
+    BEST_NO_OCR = "best_no_ocr"
+    BEST = "best"
 
 
 def draw_bboxes(img, bboxes, color=(0, 255, 0)):
@@ -261,7 +271,7 @@ def spans_to_layout_text(
             for span in spans
         ]
     except (ValueError, ZeroDivisionError):
-        print("Error in mapping spans to grid positions.")
+        logger.debug("Error in mapping spans to grid positions.")
         return SPAN_JOIN_CHAR.join(span["text"] for span in spans)
 
     # group spans by row
