@@ -66,22 +66,34 @@ def get_mode_font_size(
 
 
 def get_mode_font_weight(
-    pages: list[dict[str, Any]],
+    pages: list[dict[str, Any]] | None = None,
+    lines: list[dict[str, Any]] | None = None,
 ) -> float:
     """Get the mode font size from a list of text spans."""
-    pages = pages[:MAX_PAGES_TO_CALCULATE_MODE]
-    font_weights = np.asarray(
-        [
-            span["font"]["weight"]
-            for page in pages
-            for block in page["blocks"]
-            for line in block["lines"]
-            for span in line["spans"]
-            if span["font"]["weight"] > 0
-        ]
-    )
-    font_weights = np.round(font_weights).astype(int)
+    if pages:
+        pages = pages[:MAX_PAGES_TO_CALCULATE_MODE]
 
+        font_weights = np.asarray(
+            [
+                span["font"]["weight"]
+                for page in pages
+                for block in page["blocks"]
+                for line in block["lines"]
+                for span in line["spans"]
+                if span["font"]["weight"] > 0
+            ]
+        )
+    elif lines:
+        font_weights = np.asarray(
+            [
+                span["font"]["weight"]
+                for line in lines
+                for span in line["spans"]
+                if span["font"]["weight"] > 0
+            ]
+        )
+
+    font_weights = np.round(font_weights).astype(int)
     try:
         mode_font_weight = np.bincount(font_weights).argmax()
     except ValueError:
@@ -139,7 +151,10 @@ def add_emphasis_metadata(
     pages = deepcopy(pages)
     if mode_font_weight is None:
         mode_font_weight = max(
-            get_mode_font_weight(pages),
+            get_mode_font_weight(
+                pages=pages,
+                lines=lines,
+            ),
             DEFAULT_MODE_FONT_WEIGHT,
         )
 

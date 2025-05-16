@@ -190,7 +190,6 @@ def get_text_pdfium(page: Any, use_emphasis_metadata: bool = True):
     if use_emphasis_metadata:
         lines = add_emphasis_metadata(
             lines=lines,
-            mode_font_weight=MODE_FONT_WEIGHT,
         )
 
     # add order to spans for later sorting of semantic blocks
