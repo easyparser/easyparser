@@ -1,1 +1,5 @@
 temp/
+
+# 02_LlamaIndexIntegration
+data_wiki/
+02_qdrant_db/

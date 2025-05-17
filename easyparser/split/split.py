@@ -2,11 +2,12 @@ import re
 import textwrap
 from typing import Callable, Optional
 
-from easyparser.base import BaseOperation, Chunk, ChunkGroup
+from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
 from easyparser.mime import MimeType
 
 from .utils import merge_splits, split_with_regex, word_len
 
+_newline_pattern = re.compile(r"\n+")
 _whitespace_pattern = re.compile(r"\s+")
 _non_whitespace_separators = [  # from https://github.com/isaacus-dev/semchunk
     ".",
@@ -39,15 +40,23 @@ _non_whitespace_separators = [  # from https://github.com/isaacus-dev/semchunk
 
 def _default_separators(text):
     """Get the default separators based on the text"""
-    whitespaces = _whitespace_pattern.findall(text)
-    if not whitespaces:
-        return _non_whitespace_separators + [""]
+    separators = []
 
-    return (
-        list(sorted(set(whitespaces), key=lambda x: len(x), reverse=True))
-        + _non_whitespace_separators
-        + [""]
-    )
+    # Prioritize newline characters
+    newlines = _newline_pattern.findall(text)
+    if newlines:
+        newlines = set(newlines)
+        separators += list(sorted(newlines, key=lambda x: len(x), reverse=True))
+
+    # Then work on whitespace characters
+    whitespaces = _whitespace_pattern.findall(text)
+    if whitespaces:
+        whitespaces = set(whitespaces)
+        if newlines:
+            whitespaces = whitespaces.difference(newlines)
+        separators += list(sorted(whitespaces, key=lambda x: len(x), reverse=True))
+
+    return separators + _non_whitespace_separators + [""]
 
 
 def split_text(
@@ -104,11 +113,14 @@ def split_text(
                     keep_separator,
                     is_separator_regex,
                 )
-                final_chunks.extend(other_chunks)
+                good_splits.extend(other_chunks)
 
     if good_splits:
         merged_text = merge_splits(good_splits, _separator, chunk_size, 0, length_fn)
         final_chunks.extend(merged_text)
+
+    # One last time
+    final_chunks = merge_splits(final_chunks, _separator, chunk_size, 0, length_fn)
 
     return final_chunks
 
@@ -169,7 +181,7 @@ def flatten_chunk_to_markdown(
     result = []
     current_chunk = Chunk(
         mimetype=MimeType.text,
-        ctype="flattened_markdown",
+        ctype=CType.Div,
         content="",
         metadata={"originals": [chunk.id]},
     )
@@ -195,7 +207,7 @@ def flatten_chunk_to_markdown(
         result = [
             Chunk(
                 mimetype=MimeType.text,
-                ctype="flattened_markdown",
+                ctype=CType.Div,
                 content=split,
                 metadata={"originals": [chunk.id]},
             )
@@ -215,7 +227,7 @@ def flatten_chunk_to_markdown(
 
             # Each of the rendered children is a chunk, that is properly splitted
             # according to the layout
-            if rendered_children:
+            while rendered_children:
                 separator = "\n\n"
                 if (
                     length_fn(current_chunk.content)
@@ -224,44 +236,17 @@ def flatten_chunk_to_markdown(
                     <= max_size
                 ):
                     # Can add the child to the current chunk
-                    if len(rendered_children) > 1:
-                        current_chunk.content += (
-                            separator + rendered_children[0].content
-                        )
-                        current_chunk.content = current_chunk.content.strip("\n")
-                        current_chunk.metadata["originals"].extend(
-                            rendered_children[0].metadata["originals"]
-                        )
-                        result.append(current_chunk)
-                        result.extend(rendered_children[1:])
-                        current_chunk = Chunk(
-                            mimetype=MimeType.text,
-                            ctype="flattened_markdown",
-                            content="",
-                            metadata={"originals": [chunk.id]},
-                        )
-                    else:
-                        current_chunk.content += (
-                            separator + rendered_children[0].content
-                        )
-                        current_chunk.metadata["originals"].extend(
-                            rendered_children[0].metadata["originals"]
-                        )
-
-                    child = child.next
-                    continue
-
-                if current_chunk.content:
-                    # Push the current chunk to the result
+                    current_chunk.content += separator + rendered_children[0].content
                     current_chunk.content = current_chunk.content.strip("\n")
-                    result.append(current_chunk)
-                    current_chunk = Chunk(
-                        mimetype=MimeType.text,
-                        ctype="flattened_markdown",
-                        content="",
-                        metadata={"originals": [chunk.id]},
+                    current_chunk.metadata["originals"].extend(
+                        rendered_children[0].metadata["originals"]
                     )
-                result.extend(rendered_children)
+                    rendered_children = rendered_children[1:]
+                else:
+                    result.append(current_chunk)
+                    current_chunk = rendered_children[0]
+                    rendered_children = rendered_children[1:]
+
             child = child.next
             continue
 
@@ -280,10 +265,7 @@ def flatten_chunk_to_markdown(
         else:
             s = "\n\n"
 
-        if (
-            length_fn(child_str) + length_fn(s) + length_fn(current_chunk.content)
-            <= max_size
-        ):
+        if length_fn(child_str + s + current_chunk.content) <= max_size:
             # Can add the child to the current chunk
             current_chunk.content += s + child_str
             current_chunk.metadata["originals"].extend(child.get_ids())
@@ -295,7 +277,7 @@ def flatten_chunk_to_markdown(
 
             current_chunk = Chunk(
                 mimetype=MimeType.text,
-                ctype="flattened_markdown",
+                ctype=CType.Div,
                 content="",
                 metadata={"originals": child.get_ids()},
             )
@@ -314,7 +296,7 @@ def flatten_chunk_to_markdown(
                     [
                         Chunk(
                             mimetype=MimeType.text,
-                            ctype="flattened_markdown",
+                            ctype=CType.Div,
                             content=split,
                             metadata={"originals": child.get_ids()},
                         )

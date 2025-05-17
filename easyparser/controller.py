@@ -158,25 +158,21 @@ class Controller:
 
             chunk = Chunk(
                 ctype=CType.Root,
-                content=f"File {path_str}",
-                mimetype=MimeType.text,
-                origin=Origin(
-                    location=path_str, protocol="file", metadata={"mimetype": mimetype}
-                ),
+                mimetype=mimetype,
+                origin=Origin(location=path_str, metadata={"mimetype": mimetype}),
             )
             chunk.id = file_hash
-
-            return chunk
-
         else:
             chunk = Chunk(
                 ctype=CType.Root,
-                content=f"Directory {path_str}",
-                mimetype=MimeType.text,
-                origin=Origin(location=path_str, protocol="directory"),
+                mimetype=MimeType.directory,
+                origin=Origin(
+                    location=path_str, metadata={"mimetype": MimeType.directory}
+                ),
             )
             chunk.id = f"dir_{chunk.id}"
-            return chunk
+
+        return chunk
 
     def register(
         self, extras: dict[str, list] | None = None, callbacks: list | None = None

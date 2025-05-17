@@ -372,7 +372,7 @@ class PptxParser(BaseOperation):
                     slide_children[idx - 1].next = child
 
                 if not use_vlm:
-                    slide_chunk.text = f"**Slide {page_num}**\n\n{slide_chunk.render()}"
+                    slide_chunk.text = f"{slide_chunk.render()}"
 
                 if prev_slide is None:
                     mc.child = slide_chunk

@@ -46,21 +46,8 @@ class RapidOCRImageText(BaseOperation):
             if len(lclasses) == 0 or (
                 len(set(lclasses)) == 1 and lclasses[0] == "figure"
             ):
-                # No text detected
-                vlm_mode = True
-                print(f"Using llm mode: {lclasses}")
-            else:
-                vlm_mode = False
-                print(f"Using ocr mode: {lclasses}")
-                if ocr_engine is None:
-                    ocr_engine = RapidOCR(
-                        params={
-                            "Global.lang_det": "en_mobile",
-                            "Global.lang_rec": "en_mobile",
-                        }
-                    )
-
-            if vlm_mode:
+                # No text detected, use VLM to read
+                logger.debug(f"Using llm mode: {lclasses}")
                 if caption:
                     from PIL import Image
 
@@ -73,6 +60,15 @@ class RapidOCRImageText(BaseOperation):
                     )
                 output.append(mc)
                 continue
+            else:
+                logger.debug(f"Using ocr mode: {lclasses}")
+                if ocr_engine is None:
+                    ocr_engine = RapidOCR(
+                        params={
+                            "Global.lang_det": "en_mobile",
+                            "Global.lang_rec": "en_mobile",
+                        }
+                    )
 
             ocr_result = ocr_engine(mc.origin.location)
             if not ocr_result.txts:

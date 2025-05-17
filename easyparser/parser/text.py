@@ -24,7 +24,7 @@ class TextParser(BaseOperation):
                 content = "".join(lines)
 
             # Create a text chunk as the main container
-            text_chunk = Chunk(ctype=CType.Div, content=content)
+            text_chunk = Chunk(ctype=CType.Div, mimetype="text/plain", content=content)
             root.add_children(text_chunk)
             output.append(root)
 

@@ -1,7 +1,7 @@
 import base64
 import logging
 from collections import defaultdict
-from enum import StrEnum
+from enum import Enum
 from typing import Any
 
 import cv2
@@ -25,7 +25,7 @@ LINE_BREAK_TOLERANCE_THRESHOLD = 8
 VIZ_RECTANGLE_THICKNESS = 2
 
 
-class OCRMode(StrEnum):
+class OCRMode(Enum):
     """OCR mode for PDF layout parser."""
 
     AUTO = "auto"

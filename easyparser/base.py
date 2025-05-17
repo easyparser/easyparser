@@ -46,7 +46,7 @@ class Origin:
         }
 
     def __str__(self):
-        return f"Origin(protocol={self.protocol}, location={self.location})"
+        return f"Origin(location={self.location})"
 
     def __repr__(self):
         return self.__str__()
@@ -188,7 +188,9 @@ class Chunk:
         self._store: "BaseStore | None" = None
 
     def __str__(self):
-        if isinstance(self.content, str):
+        if self.ctype == CType.Root and self.origin:
+            content = f"origin={self.origin.location}"
+        elif isinstance(self.content, str):
             text = self.content
             if len(text) > 80:
                 text = f"{text[:50]}... ({len(text[50:].split())} more words)"
@@ -197,10 +199,18 @@ class Chunk:
         else:
             content = f"mimetype={self.mimetype}"
 
-        return self.__class__.__name__ + f"(ctype={self._ctype}, {content})"
+        return (
+            self.__class__.__name__
+            + f"(id={self.id[:5]}, ctype={self._ctype}, {content})"
+        )
 
     def __repr__(self):
         return self.__str__()
+
+    def __iter__(self):
+        """Iterate over the chunk and its children"""
+        for _, ch in self.walk():
+            yield ch
 
     def walk(
         self, depth: int = 0, include_siblings: bool = True
@@ -230,6 +240,50 @@ class Chunk:
                 yield from sibling.walk(depth=depth, include_siblings=False)
                 sibling = sibling.next
 
+    def nav(
+        self, next: int = 0, prev: int = 0, parent: int = 0, child: int = 0
+    ) -> "Chunk | None":
+        """Navigate to the next, previous, parent or child chunk
+
+        Only one of the arguments can be > 0, otherwise will evaluate to the first
+        one.
+
+        Args:
+            next: if > 0, go to the next chunk n times
+            prev: if > 0, go to the previous chunk n times
+            parent: if > 0, go to the parent chunk n times
+            child: if > 0, go to the child chunk n times
+        """
+        ch = self
+
+        if next > 0:
+            for _ in range(next):
+                ch = ch.next
+                if ch is None:
+                    return None
+            return ch
+
+        if prev > 0:
+            for _ in range(prev):
+                ch = ch.prev
+                if ch is None:
+                    return None
+            return ch
+
+        if parent > 0:
+            for _ in range(parent):
+                ch = ch.parent
+                if ch is None:
+                    return None
+            return ch
+
+        if child > 0:
+            for _ in range(child):
+                ch = ch.child
+                if ch is None:
+                    return None
+            return ch
+
     @property
     def ctype(self):
         """Get the chunk type of the object"""
@@ -243,8 +297,17 @@ class Chunk:
     @property
     def content(self):
         """Lazy loading of the content of the object"""
-        if self._content is None and self._store is not None:
+        if self._content is not None:
+            return self._content
+
+        if self._store is not None:
             self._content = self._store.fetch_content(self)
+            return self._content
+
+        if self.origin is not None:
+            with open(self.origin.location, "rb") as fi:
+                self._content = fi.read()
+
         return self._content
 
     @content.setter
@@ -746,7 +809,10 @@ class Chunk:
             child.apply(fn, depth=depth + 1)
             child = child.next
 
-    def print_graph(self, ctype: str | None | list = None):
+    def print_graph(
+        self, ctype: str | None | list = None, include_siblings: bool = True
+    ):
+        """Print the chunk graph"""
         if isinstance(ctype, str):
             ctype = [ctype]
 
@@ -755,6 +821,12 @@ class Chunk:
                 print("    " * depth, node)
 
         self.apply(print_node)
+
+        if include_siblings:
+            sibling = self.next
+            while sibling:
+                sibling.print_graph(ctype=ctype, include_siblings=False)
+                sibling = sibling.next
 
     def get_ids(self) -> list[str]:
         """Get all the ids of the chunk and its children"""
@@ -765,14 +837,19 @@ class Chunk:
             child = child.next
         return ids
 
-    def find(self, id: str | None = None, ctype: str | None = None) -> "Chunk | None":
+    def find(
+        self,
+        id: str | None = None,
+        ctype: str | None = None,
+        include_siblings: bool = True,
+    ) -> "Chunk | None":
         """Find the chunk by id or ctype
 
         Args:
             id: the id of the chunk to find
             ctype: the ctype of the chunk to find
         """
-        if id is not None and self.id == id:
+        if id is not None and self.id.startswith(id):
             return self
 
         if ctype is not None and self.ctype == ctype:
@@ -785,9 +862,19 @@ class Chunk:
                 return found
             child = child.next
 
+        if include_siblings:
+            sibling = self.next
+            while sibling:
+                found = sibling.find(id=id, ctype=ctype, include_siblings=False)
+                if found:
+                    return found
+                sibling = sibling.next
+
         return None
 
-    def find_all(self, ctype: str | None = None) -> list["Chunk"]:
+    def find_all(
+        self, ctype: str | None = None, include_siblings: bool = True
+    ) -> list["Chunk"]:
         """Find all the chunks by ctype
 
         Args:
@@ -801,6 +888,12 @@ class Chunk:
         while child:
             result.extend(child.find_all(ctype=ctype))
             child = child.next
+
+        if include_siblings:
+            sibling = self.next
+            while sibling:
+                result.extend(sibling.find_all(ctype=ctype, include_siblings=False))
+                sibling = sibling.next
 
         return result
 
@@ -827,6 +920,46 @@ class Chunk:
             ch.store = self.store
 
         return ch
+
+    def to_llamaindex_node(self):
+        """Export to llama-index's node"""
+        import uuid
+
+        from llama_index.core.schema import ImageNode, TextNode
+
+        if self.mimetype and self.mimetype.startswith("image"):
+            if self.origin:
+                return ImageNode(
+                    id_=uuid.uuid4().hex,
+                    image_path=self.origin.location,
+                    metadata={
+                        "file_path": self.origin.location,
+                        "file_name": self.origin.location,
+                        "file_type": self.mimetype,
+                        "chunk_id": self.id,
+                    },
+                )
+            else:
+                import base64
+
+                return ImageNode(
+                    id_=uuid.uuid4().hex,
+                    image=base64.b64encode(self.content),
+                    image_mimetype=self.mimetype,
+                    metadata={
+                        "file_path": "image",
+                        "file_type": self.mimetype,
+                        "chunk_id": self.id,
+                    },
+                )
+        else:
+            return TextNode(
+                id_=uuid.uuid4().hex,
+                text=self.content,
+                metadata={
+                    "chunk_id": self.id,
+                },
+            )
 
 
 class ChunkGroup:
