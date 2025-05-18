@@ -1,7 +1,7 @@
 ## Installation
 
 ```bash
-pip install ...
+pip install easyparser
 ```
 
 Install the following system dependencies for the easyparser library:
