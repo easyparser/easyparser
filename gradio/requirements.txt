@@ -3,7 +3,7 @@ gradio-pdf
 sycamore-ai[local-inference]
 unstructured[pdf]
 docling
-git+https://github.com/easyparser/pdftext.git
+chunking-pdftext
 img2table
 Pillow
 opencv-contrib-python

@@ -324,7 +324,7 @@ class FastPDF(BaseOperation):
     @classmethod
     def py_dependency(cls) -> list[str]:
         return [
-            "pdftext",
+            "chunking-pdftext",
             "img2table",
             "Pillow",
             "rapid-layout",

@@ -33,7 +33,7 @@ class OCRMode(Enum):
     ON = "on"
 
 
-class ParserPreset(StrEnum):
+class ParserPreset(Enum):
     FAST = "fast"
     FAST_2D = "fast_2d"
     BEST_NO_OCR = "best_no_ocr"

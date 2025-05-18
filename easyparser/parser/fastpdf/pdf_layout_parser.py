@@ -6,8 +6,8 @@ from typing import Any, Optional
 import cv2
 import numpy as np
 import pypdfium2
-from pdftext.pdf.chars import deduplicate_chars, get_chars
-from pdftext.pdf.pages import get_lines, get_spans
+from chunking_contrib.pdftext.pdf.chars import deduplicate_chars, get_chars
+from chunking_contrib.pdftext.pdf.pages import get_lines, get_spans
 from rapid_layout import RapidLayout, VisLayout
 from rapidocr import RapidOCR
 

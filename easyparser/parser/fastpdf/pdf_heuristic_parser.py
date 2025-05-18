@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from pdftext.extraction import dictionary_output
+from chunking_contrib.pdftext.extraction import dictionary_output
 
 from .pdf_image import get_images_pdfium
 from .pdf_table import get_tables_img2table

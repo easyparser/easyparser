@@ -28,6 +28,7 @@ dependencies = [
   "img2table",
   "pillow",
   "rapid-layout",
+  "chunking-pdftext",
 
   # Image
   "opencv-python",
@@ -50,7 +51,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine", "papermill"]
+dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine"]
 pdf-others = ["docling", "unstructured[pdf]", "sycamore"]
 
 [project.urls]
