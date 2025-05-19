@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -48,6 +49,13 @@ LAYOUT_CLASS_TO_BLOCK_TYPE = {
     "text": "text",
 }
 
+CHUNKING_OCR_DET = os.getenv("CHUNKING_OCR_DET", "en_mobile")
+CHUNKING_OCR_REC = os.getenv("CHUNKING_OCR_REC", "en_mobile")
+CHUNKING_LAYOUT_MODEL = os.getenv(
+    "CHUNKING_LAYOUT_MODEL",
+    "yolov8n_layout_general6",
+)
+
 
 class SingletonModelEngine:
     _instance: Optional["SingletonModelEngine"] = None
@@ -63,7 +71,10 @@ class SingletonModelEngine:
     def ocr_engine(self) -> RapidOCR:
         if self._ocr_engine is None:
             self._ocr_engine = RapidOCR(
-                params={"Global.lang_det": "en_mobile", "Global.lang_rec": "en_mobile"}
+                params={
+                    "Global.lang_det": CHUNKING_OCR_DET,
+                    "Global.lang_rec": CHUNKING_OCR_REC,
+                }
             )
         return self._ocr_engine
 
@@ -71,7 +82,7 @@ class SingletonModelEngine:
     def layout_engine(self) -> RapidLayout:
         if self._layout_engine is None:
             self._layout_engine = RapidLayout(
-                model_type="yolov8n_layout_general6", iou_thres=0.5, conf_thres=0.4
+                model_type=CHUNKING_LAYOUT_MODEL, iou_thres=0.5, conf_thres=0.4
             )
         return self._layout_engine
 
@@ -328,8 +339,8 @@ def partition_pdf_layout(
     debug_path: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     """Partition a PDF document into blocks with metadata.
-    Use PDFium to extract text and RapidOCR to perform OCR on images in required.
-    Also, use RapidLayout to detect layout and group text into blocks.
+    Use PDFium to extract text and RapidOCR to perform OCR on images if required.
+    Also, use RapidLayout to detect layout and group text into semantic blocks.
     """
     doc_path = Path(doc_path)
     is_image = doc_path.suffix.lower() != ".pdf"
