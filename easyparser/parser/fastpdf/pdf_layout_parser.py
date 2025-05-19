@@ -36,7 +36,6 @@ QUOTE_LOOSEBOX: bool = True
 SUPERSCRIPT_HEIGHT_THRESHOLD: float = 0.7
 LINE_DISTANCE_THRESHOLD: float = 0.1
 MIN_NUM_LINES_2D: int = 5
-MODE_FONT_WEIGHT: int = 450
 CLASS_LIST = ["title", "caption", "figure", "table", "equation", "text"]
 IMAGE_CLASS_LIST = ["figure", "table", "equation"]
 TEXT_CLASS_LIST = ["text", "title", "caption", "table"]
@@ -122,6 +121,9 @@ def assign_lines_to_blocks(
 
 
 def is_ocr_required(blocks: list[dict[str, Any]], ocr_thres=0.75) -> bool:
+    """Check if OCR is required based on the ratio of empty blocks.
+    Blocks without any text are considered empty.
+    """
     # check if block type in TEXT_CLASS_LIST has at least one line
     line_counts = []
     for block in blocks:
@@ -139,6 +141,7 @@ def is_ocr_required(blocks: list[dict[str, Any]], ocr_thres=0.75) -> bool:
 def do_ocr_page(
     img, page_idx: int, debug_path: Path | None = None, append_space: bool = True
 ):
+    """Run OCR on a page image and return the detected text spans."""
     ocr_result = SingletonModelEngine().ocr_engine(img, use_cls=False)
     img_h, img_w = img.shape[:2]
     spans = []
@@ -169,6 +172,9 @@ def do_ocr_page(
 
 
 def get_text_pdfium(page: Any, use_emphasis_metadata: bool = True):
+    """Get text (with metadata) from a PDFium page
+    and return the lines and page size.
+    """
     textpage = page.get_textpage()
     page_bbox: list[float] = page.get_bbox()
     page_width = math.ceil(abs(page_bbox[2] - page_bbox[0]))
@@ -214,7 +220,12 @@ def render_blocks(
     render_2d_text_paragraph: bool = True,
     use_emphasis_metadata: bool = True,
 ) -> list[dict[str, Any]]:
-    """Render blocks with metadata to final text."""
+    """Render blocks with metadata to final text.
+    Output format:
+    - 2D text (with space-formatted position)
+    - image
+    - markdown emphasis
+    """
     page_blocks = []
     page_width, page_height = page_shape
     for block in blocks:
@@ -316,6 +327,10 @@ def partition_pdf_layout(
     ocr_mode: str | OCRMode = OCRMode.AUTO,
     debug_path: Path | str | None = None,
 ) -> list[dict[str, Any]]:
+    """Partition a PDF document into blocks with metadata.
+    Use PDFium to extract text and RapidOCR to perform OCR on images in required.
+    Also, use RapidLayout to detect layout and group text into blocks.
+    """
     doc_path = Path(doc_path)
     is_image = doc_path.suffix.lower() != ".pdf"
 

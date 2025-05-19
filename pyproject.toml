@@ -25,18 +25,18 @@ dependencies = [
   "tqdm",
 
   # PDF
+  "pypdfium2",
   "img2table",
   "pillow",
   "rapid-layout",
   "chunking-pdftext",
 
   # Image
-  "opencv-python",
+  "opencv-contrib-python",
   "rapidocr",
 
   # Office
   "python-pptx",
-  "pypdfium2",
   "openpyxl",
 
   # HTML

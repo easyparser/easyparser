@@ -214,6 +214,11 @@ def spans_to_layout_text(
     add_line_break_on_conflict: bool = True,
     sort_span: bool = False,
 ) -> str:
+    """Render the text from spans or lines to 2D layout text.
+    2D layout text is a format that preserves the layout of
+    the original spans or lines using spaces and newlines.
+    """
+
     def get_span_anchor_x(span: dict[str, Any]) -> float:
         return span["bbox"][0]
 
@@ -547,28 +552,37 @@ def is_2d_layout(
 def crop_img_and_export_base64(img: np.ndarray, box: list[float]) -> str:
     """Crop the image and export it as base64."""
     x1, y1, x2, y2 = box
-    x1 = int(x1 * img.shape[1])
-    y1 = int(y1 * img.shape[0])
-    x2 = int(x2 * img.shape[1])
-    y2 = int(y2 * img.shape[0])
+    x1 = max(int(x1 * img.shape[1]), 0)
+    y1 = max(int(y1 * img.shape[0]), 0)
+    x2 = min(int(x2 * img.shape[1]), img.shape[1])
+    y2 = min(int(y2 * img.shape[0]), img.shape[0])
 
     cropped_img = img[y1:y2, x1:x2]
-    _, buffer = cv2.imencode(".png", cropped_img)  # or '.jpg'
-    img_base64 = base64.b64encode(buffer).decode("utf-8")
+    try:
+        _, buffer = cv2.imencode(".png", cropped_img)  # or '.jpg'
+    except Exception as e:
+        logger.debug(f"Error encoding image: {e}", [x1, y1, x2, y2], box)
+        return None
 
+    img_base64 = base64.b64encode(buffer).decode("utf-8")
     return "data:image/png;base64," + img_base64
 
 
 def crop_img_and_export_bytes(img: np.ndarray, box: list[float]) -> bytes:
-    """Crop the image and export it as base64."""
+    """Crop the image and export it as bytes."""
     x1, y1, x2, y2 = box
-    x1 = int(x1 * img.shape[1])
-    y1 = int(y1 * img.shape[0])
-    x2 = int(x2 * img.shape[1])
-    y2 = int(y2 * img.shape[0])
+    x1 = max(int(x1 * img.shape[1]), 0)
+    y1 = max(int(y1 * img.shape[0]), 0)
+    x2 = min(int(x2 * img.shape[1]), img.shape[1])
+    y2 = min(int(y2 * img.shape[0]), img.shape[0])
 
     cropped_img = img[y1:y2, x1:x2]
-    _, buffer = cv2.imencode(".png", cropped_img)  # or '.jpg'
+    try:
+        _, buffer = cv2.imencode(".png", cropped_img)  # or '.jpg'
+    except Exception as e:
+        logger.debug(f"Error encoding image: {e}", [x1, y1, x2, y2], box)
+        return None
+
     return buffer.tobytes()
 
 
