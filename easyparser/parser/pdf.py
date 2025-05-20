@@ -151,7 +151,7 @@ class SycamorePDF(BaseOperation):
 
     @classmethod
     def py_dependency(cls) -> list[str]:
-        return ["sycamore"]
+        return ["sycamore-ai[local-inference]"]
 
 
 class FastPDF(BaseOperation):

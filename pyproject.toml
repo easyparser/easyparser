@@ -52,7 +52,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine"]
-pdf-others = ["docling", "unstructured[pdf]", "sycamore"]
+pdf-others = ["docling", "unstructured[pdf]", "sycamore-ai[local-inference]"]
 
 [project.urls]
 Homepage = "https://github.com/easyparser/easyparser"
