@@ -10,25 +10,9 @@ and structure is preserved.
 
 import hashlib
 from dataclasses import asdict, dataclass
-from enum import Enum
 from pathlib import Path
 
 from easyparser.base import Chunk, Origin
-
-
-class Label(Enum):
-    """Possible label values for a chunk from PDF"""
-
-    text = "text"  # block of text
-
-    # important for structure analysis, inferring sections
-    heading = "heading"
-
-    # important for multi-modal usage
-    image = "image"  # if contains image
-    table = "table"  # if contains table
-    formula = "formula"  # if contains formula
-    checkbox = "checkbox"  # if contains checkbox
 
 
 @dataclass
