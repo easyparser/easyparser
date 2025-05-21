@@ -892,7 +892,7 @@ class Chunk:
 
         child = self.child
         while child:
-            result.extend(child.find_all(ctype=ctype))
+            result.extend(child.find_all(ctype=ctype, include_siblings=False))
             child = child.next
 
         if include_siblings:
