@@ -39,6 +39,7 @@ assert Path(PDF_JS_DIR).exists(), (
 )
 
 HEAD_HTML = """
+<link href='https://fonts.googleapis.com/css?family=PT Mono' rel='stylesheet'>
 <script type='module' src='https://cdn.skypack.dev/pdfjs-viewer-element'></script>"
 """
 LOAD_PDF_JS = """
@@ -179,29 +180,33 @@ def convert_document(
 ):
     if enabled:
         print("Processing file", pdf_path, "with method", method)
+        gr.Info(f"Processing file with method `{method}`")
     else:
         return "", "", "", []
 
     if not pdf_path:
         raise ValueError("No file provided")
 
-    method = METHOD_MAP[method]
+    method_cls = METHOD_MAP[method]
     # trim to MAX_PAGES
     if MAX_PAGES > 0 and MAX_PAGES_CHUNKING > 0:
-        max_pages = MAX_PAGES_CHUNKING if method == FastPDF else MAX_PAGES
+        max_pages = MAX_PAGES_CHUNKING if method_cls == FastPDF else MAX_PAGES
+        old_pdf_path = pdf_path
         pdf_path = trim_pages(
             pdf_path,
             start_page=0,
             trim_pages=max_pages,
         )
+        if pdf_path != old_pdf_path:
+            gr.Info(f"Method `{method}` will process only first {max_pages} pages.")
 
     # benchmarking
     start = time.time()
     debug_image_paths = []
 
     root = ctrl.as_root_chunk(pdf_path)
-    if method == FastPDF:
-        chunks = method.run(
+    if method_cls == FastPDF:
+        chunks = method_cls.run(
             root,
             # preset=ParserPreset.BEST,
             render_full_page=use_full_page,
@@ -213,7 +218,7 @@ def convert_document(
             debug_path=DEBUG_DIR,
         )
     else:
-        chunks = method.run(root)
+        chunks = method_cls.run(root)
 
     if generate_toc:
         print("Generating Table-of-Content")
@@ -282,7 +287,7 @@ def convert_document(
     duration = time.time() - start
     duration_per_page = duration / max_page
     duration_message = (
-        f"Conversion with {method} took *{duration:.2f}s* total - "
+        f"Conversion with {method} ({max_page} pages) took *{duration:.2f}s* total - "
         f"*{duration_per_page:.2f}s* per page"
     )
     print(duration_message)
@@ -426,6 +431,7 @@ with gr.Blocks(
                 generate_toc = gr.Checkbox(
                     label="Generate Table-of-Content",
                     value=False,
+                    visible=False,
                 )
                 add_reference_links = gr.Checkbox(
                     label="Add reference links to original PDF",
