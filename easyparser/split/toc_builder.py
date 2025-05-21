@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import List
 
 from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
+from easyparser.mime.base import MimeType
 from easyparser.models import completion
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,6 @@ def _build_toc_tree(
     # parse the response
     id_pattern = r"ID `(\d+)`"
     headers_level = {}
-    header_ids_in_response = set()
     for line in response.split("\n"):
         # count number of leading # to determine the level
         level = line.count("#")
@@ -60,7 +60,6 @@ def _build_toc_tree(
         match = re.search(id_pattern, line)
         if match:
             header_id = int(match.group(1))
-            header_ids_in_response.add(header_id)
             # find the header with the id
             headers_level[header_id] = level
             logger.debug("#" * level + " " + headers[header_id].content)
@@ -76,17 +75,97 @@ def _build_toc_tree(
                     child_indices[i].append(header_id)
                     break
 
-    used_header_ids = []
-    for header_id, child_header_ids in child_indices.items():
-        used_header_ids += child_header_ids
-
-    to_remove_header_ids = (
-        set(range(len(headers))) - set(used_header_ids) - set(header_ids_in_response)
-    )
-    return child_indices, to_remove_header_ids
+    to_remove_header_ids = set(range(len(headers))) - set(headers_level.keys())
+    return headers_level, child_indices, to_remove_header_ids
 
 
-class TOCBuilder(BaseOperation):
+def _format_toc_tree(
+    headers: List[Chunk],
+    headers_level: dict[int, int],
+) -> str:
+    """Format the table of contents tree for output."""
+    toc = []
+    for header_id, header in enumerate(headers):
+        header_level = headers_level.get(header_id)
+        if header_level is None:
+            continue
+        toc.append(f"{'#' * (header_level)} {header.content}")
+    return "\n".join(toc)
+
+
+def _pdfium_get_toc(
+    pdf_path: str,
+    max_depth: int = 15,
+):
+    """Get the table of contents from the pdfium."""
+    import pypdfium2 as pdfium
+
+    doc = pdfium.PdfDocument(pdf_path)
+    toc = doc.get_toc(max_depth=max_depth)
+    output = ""
+
+    for bm in toc:
+        line = "#" * (bm.level + 1) + " " + bm.title
+        output += line + "\n"
+
+    return output
+
+
+class TOCExtractor(BaseOperation):
+    """Extract the table of contents from the document."""
+
+    @classmethod
+    def run(
+        cls,
+        chunks: Chunk | ChunkGroup,
+        use_llm: bool = False,
+        model: str | None = None,
+        **kwargs,
+    ) -> ChunkGroup:
+        """Extract the table of contents and output
+        as a new Chunk for each Root."""
+        if isinstance(chunks, Chunk):
+            chunks = ChunkGroup([chunks])
+
+        output = ChunkGroup()
+        for root in chunks:
+            if root.ctype != CType.Root:
+                continue
+
+            header_chunks = []
+            for _, child_chunk in root.walk():
+                if child_chunk.ctype == CType.Header:
+                    header_chunks.append(child_chunk)
+
+            # first check if the pdfium can get the TOC
+            pdf_path = root.origin.location
+            toc_content = _pdfium_get_toc(
+                pdf_path,
+            )
+            # if the toc_content is empty, use the LLM
+            if len(toc_content) == 0 and use_llm:
+                header_levels, _, _ = _build_toc_tree(
+                    header_chunks,
+                    model=model,
+                )
+                toc_content = _format_toc_tree(
+                    header_chunks,
+                    header_levels,
+                )
+
+            new_root = root.clone(no_relation=True)
+            toc_chunk = Chunk(
+                mimetype=MimeType.text,
+                content=toc_content,
+                ctype=CType.Div,
+            )
+            new_root.add_children([toc_chunk])
+            output.append(new_root)
+
+        return output
+
+
+class TOCHierarchyBuilder(BaseOperation):
 
     @classmethod
     def run(
@@ -110,14 +189,13 @@ class TOCBuilder(BaseOperation):
 
             increment_header_id = -1
             cur_header_id = -1
-            cur_header_chunk = None
             cur_header_children = []
 
             if use_llm:
                 headers = [
                     chunk for _, chunk in root.walk() if chunk.ctype == CType.Header
                 ]
-                child_header_indices, to_remove_header_ids = _build_toc_tree(
+                _, child_header_indices, to_remove_header_ids = _build_toc_tree(
                     headers, model=model
                 )
 
@@ -135,15 +213,12 @@ class TOCBuilder(BaseOperation):
                     not use_llm or increment_header_id not in to_remove_header_ids
                 ):
                     # commit the previous header
-                    if cur_header_chunk and cur_header_children:
+                    if cur_header_id >= 0 and cur_header_children:
                         parent_to_child_mapping[cur_header_id].extend(
                             cur_header_children
                         )
 
-                    cur_header_chunk = new_child_chunk
                     cur_header_id = increment_header_id
-                    # to mark this node has child and text need to re-rendered
-                    cur_header_chunk.text = None
                     cur_header_children = []
                 else:
                     if (
@@ -153,13 +228,13 @@ class TOCBuilder(BaseOperation):
                         # change ctype to Para
                         new_child_chunk.ctype = CType.Para
 
-                    if cur_header_chunk:
+                    if cur_header_id >= 0:
                         cur_header_children.append(new_child_chunk)
                     else:
                         cur_root_children.append(new_child_chunk)
 
             # commit the last header
-            if cur_header_chunk and cur_header_children:
+            if cur_header_id >= 0 and cur_header_children:
                 parent_to_child_mapping[cur_header_id].extend(cur_header_children)
 
             # get root headers and add them to the root children
