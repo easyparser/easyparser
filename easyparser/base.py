@@ -165,7 +165,7 @@ class Chunk:
         child: "None | list | Chunk" = None,
         next: "None | str | Chunk" = None,
         prev: "None | str | Chunk" = None,
-        origin: None | Origin = None,
+        origin: None | dict | Origin = None,
         metadata: None | dict = None,
         history: None | list = None,
     ):
@@ -186,6 +186,12 @@ class Chunk:
         self._content_length: int | None = None
         self._history: list = history or []
         self._store: "BaseStore | None" = None
+
+        # convert origin to Origin object if it is a dict
+        if isinstance(self.origin, dict):
+            self.origin = Origin(
+                **self.origin,
+            )
 
     def __str__(self):
         if self.ctype == CType.Root and self.origin:
