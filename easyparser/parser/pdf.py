@@ -177,16 +177,48 @@ class FastPDF(BaseOperation):
         extract_table: bool = True,
         extract_image: bool = True,
         extract_page: bool = False,
-        ocr_mode: str | OCRMode = OCRMode.AUTO,
-        preset: str | ParserPreset | None = None,
+        ocr_mode: OCRMode = OCRMode.AUTO,
+        preset: ParserPreset | None = None,
         multiprocessing_executor: ProcessPoolExecutor | None = None,
         debug_path: str | None = None,
         **kwargs,
     ) -> ChunkGroup:
-        """Load the PDF with a fast PDF parser.
+        """Load the PDF with a custom easyparser FastPDF parser.
+        This extractor uses efficient models / heuristics to understand
+        the layout structure of the PDF and extract text from it. The main
+        idea is to balance the speed and accuracy of the extraction process.
+        Also, a custom 2D layout text rendering engine is used to export
+        the text in a way that preserve original PDF layout,
+        which is useful for downstream RAG application.
+
+        Should be used as default parser for PDF files.
 
         Args:
             chunk: The input chunk to process.
+            use_layout_parser: If true, uses the layout parser to extract text.
+                Otherwise, uses the heuristic parser based on the PDF metadata
+                and image-based processing.
+            render_full_page: If true, renders the full page as 2D layout text.
+            render_2d_text_paragraph: If true, auto-detects text paragraphs that
+                should be represented as 2D layout and render them.
+            render_scale: The scale factor for rendering image content
+                (table / figure).
+            extract_table: If true, extracts tables from the PDF.
+                Only used in non-layout parser mode.
+            extract_image: If true, extracts images from the PDF.
+            extract_page: If true, extracts the page image from the PDF
+                as a parent chunk of other elements.
+                Useful for app which requires indexing full page
+                as well as child elements.
+            ocr_mode: The OCR mode to use. Can be "auto", "off", or "on".
+                "auto" will use OCR only if the text is not extractable from the PDF.
+                "off" will not use OCR at all.
+                "on" will always use OCR instead of current embedded text.
+            preset: The quick config preset to use for the parser e.g: "best", "fast".
+            multiprocessing_executor: The executor to use for multiprocessing.
+                Only used in non-layout parser mode.
+            debug_path: The path to save the debug images.
+                If None, no debug images will be generated.
         """
         from .fastpdf.pdf_heuristic_parser import parition_pdf_heuristic
         from .fastpdf.pdf_layout_parser import partition_pdf_layout
