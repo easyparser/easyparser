@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-version = "0.0.1"
+version = "0.0.2"
 name = "easyparser"
 authors = [
   { name = "trducng", email = "trungduc1992@gmail.com" },
@@ -24,17 +24,6 @@ dependencies = [
   "tree-sitter",
   "tqdm",
 
-  # PDF
-  "pypdfium2",
-  "img2table",
-  "pillow",
-  "rapid-layout",
-  "chunking-pdftext",
-
-  # Image
-  "opencv-contrib-python",
-  "rapidocr",
-
   # Office
   "python-pptx",
   "openpyxl",
@@ -44,14 +33,13 @@ dependencies = [
 
   # Markdown
   "tree-sitter-markdown",
-
-  # Audio
-  "openai-whisper",
-  "pydub",
 ]
 
 [project.optional-dependencies]
 dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine"]
+pdf = ["pypdfium2", "img2table", "pillow", "rapid-layout", "chunking-pdftext"]
+ocr = ["opencv-contrib-python", "rapidocr", "rapid-layout", "pillow"]
+audio  = ["openai-whisper", "pydub"]
 pdf-others = ["docling", "unstructured[pdf]", "sycamore-ai[local-inference]"]
 
 [project.urls]
