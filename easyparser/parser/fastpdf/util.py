@@ -59,7 +59,12 @@ def draw_bboxes(img, bboxes, color=(0, 255, 0)):
 
 
 def scale_bbox(bbox: list[float], width: float, height: float) -> list[float]:
-    return [bbox[0] / width, bbox[1] / height, bbox[2] / width, bbox[3] / height]
+    return [
+        float(bbox[0]) / width,
+        float(bbox[1]) / height,
+        float(bbox[2]) / width,
+        float(bbox[3]) / height,
+    ]
 
 
 def is_bbox_overlap(bbox_a: list[float], bbox_b: list[float]) -> bool:

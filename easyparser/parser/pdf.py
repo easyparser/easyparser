@@ -479,10 +479,10 @@ class UnstructuredPDF(BaseOperation):
                     width, height = coord.system.width, coord.system.height
                     origin = mime_pdf.to_origin(
                         pdf_root,
-                        x1 / width,
-                        x2 / width,
-                        y1 / height,
-                        y2 / height,
+                        float(x1 / width),
+                        float(x2 / width),
+                        float(y1 / height),
+                        float(y2 / height),
                         e.metadata.page_number,
                     )
                 if e.category == "Table":
