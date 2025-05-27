@@ -24,6 +24,10 @@ dependencies = [
   "tree-sitter",
   "tqdm",
 
+  # file type identification
+  "magika",
+  "python-magic",
+
   # Office
   "python-pptx",
   "openpyxl",
@@ -37,7 +41,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["coverage", "pytest", "black", "flake8", "mypy", "isort", "pre-commit", "notebook", "ipython", "build", "twine"]
-pdf = ["pypdfium2", "img2table", "pillow", "rapid-layout", "chunking-pdftext"]
+pdf = ["pypdfium2", "img2table", "pillow", "rapid-layout", "chunking-pdftext", "opencv-contrib-python"]
 ocr = ["opencv-contrib-python", "rapidocr", "rapid-layout", "pillow"]
 audio  = ["openai-whisper", "pydub"]
 pdf-others = ["docling", "unstructured[pdf]", "sycamore-ai[local-inference]"]

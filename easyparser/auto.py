@@ -54,8 +54,9 @@ def parse(
     skip_hidden: bool = True,
     extras: dict[str, list] | None = None,
     callbacks: list[Callable] | None = None,
-) -> list[Chunk]:
-    """Parse a directory into chunks, where each file is a chunk
+) -> Chunk | list[Chunk]:
+    """Parse a directory or a file into chunks,
+    where each file is a chunk with its content as children.
 
     Args:
         path: the path to the directory
@@ -74,7 +75,7 @@ def parse(
         return []
 
     if path.is_file():
-        return [parse_as_graph(path, extras=extras, callbacks=callbacks)]
+        return parse_as_graph(path, extras=extras, callbacks=callbacks)
 
     # Don't process directories
     ctrl = get_controller()

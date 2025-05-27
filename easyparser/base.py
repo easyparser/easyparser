@@ -310,7 +310,8 @@ class Chunk:
             self._content = self._store.fetch_content(self)
             return self._content
 
-        if self.origin is not None:
+        if self.origin is not None and self.ctype == CType.Root:
+            # load content from the origin location if is Root chunk
             with open(self.origin.location, "rb") as fi:
                 self._content = fi.read()
 
@@ -618,7 +619,8 @@ class Chunk:
             return current
         elif format == "multi":
             current_content = ""
-            if self.content is not None:  # if None, just ignore and go to child chunk
+            if self.ctype != CType.Root and self.content is not None:
+                # if None, just ignore and go to child chunk
                 if isinstance(self.content, str):
                     current_content = self.content
                 elif isinstance(self.content, bytes):
