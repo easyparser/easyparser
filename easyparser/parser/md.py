@@ -164,7 +164,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
 
         return chunk
     elif node.type == "document":
-        chunk = Chunk(mimetype="text/markdown", ctype=CType.Para, content="")
+        chunk = Chunk(mimetype=MimeType.text, ctype=CType.Para, content="")
         prev = None
         for idx, child in enumerate(node.children):
             child_chunk = parse_tree_sitter_node(child, content)
@@ -177,7 +177,7 @@ def parse_tree_sitter_node(node, content) -> Chunk:
             prev = child_chunk
         return chunk
     elif node.type == "list":
-        chunk = Chunk(mimetype="text/markdown", ctype=CType.List, content="")
+        chunk = Chunk(mimetype=MimeType.text, ctype=CType.List, content="")
         prev = None
         # handle list items
         for idx, child in enumerate(node.children):
@@ -217,8 +217,15 @@ def parse_tree_sitter_node(node, content) -> Chunk:
                 list_item.prev = prev
             prev = list_item
         return chunk
+    elif node.type == "thematic_break":
+        text = content[node.start_byte : node.end_byte].decode("utf-8").strip()
+        chunk = Chunk(mimetype=MimeType.text, ctype=CType.Para, content=text)
+        return chunk
     else:
-        raise NotImplementedError(f"Node type {node.type} not implemented")
+        logger.warning(f"Node type {node.type} not implemented")
+        text = content[node.start_byte : node.end_byte].decode("utf-8").strip()
+        chunk = Chunk(mimetype=MimeType.text, ctype=CType.Para, content=text)
+        return chunk
 
 
 class Markdown(BaseOperation):
