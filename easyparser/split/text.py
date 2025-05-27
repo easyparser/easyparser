@@ -2,7 +2,7 @@ import copy
 import re
 from typing import Callable, Literal, Optional
 
-from easyparser.base import BaseOperation, Chunk, ChunkGroup
+from easyparser.base import BaseOperation, Chunk, ChunkGroup, CType
 from easyparser.mime import MimeType
 
 from .utils import merge_splits, split_with_regex, word_len
@@ -154,6 +154,9 @@ class ChunkByCharacters(BaseOperation):
             if isinstance(ch.content, str) and not ch.content:
                 output.append(ch)
                 continue
+
+            if ch.ctype == CType.Root:
+                continue  # Skip root chunks
 
             separators = separators or _default_separators(ch.text)
             splitted_texts = _split_text(ch.content, separators)

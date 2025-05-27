@@ -84,7 +84,13 @@ Some parsers require external tools to be installed on your system:
   brew install pandoc
   ```
 
-- **libreoffice**: Required for file conversion (DOC → DOCX, PPT → PPTX, XLS → XLSX, etc.)
+<details>
+<summary>
+For legacy Office documents support
+</summary>
+
+- **libreoffice**: Required for file conversion (DOC → DOCX, PPT → PPTX, PPTX → PDF, etc.)
+
   ```bash
   # Ubuntu/Debian
   sudo apt-get install libreoffice
@@ -92,6 +98,8 @@ Some parsers require external tools to be installed on your system:
   # macOS
   brew install --cask libreoffice
   ```
+
+</details>
 
 ## 🔍 Supported File Types
 
@@ -109,7 +117,12 @@ Some parsers require external tools to be installed on your system:
 Parsers read different file formats and convert them into a unified chunk structure:
 
 ```python
+from easyparser.controller import get_controller
 from easyparser.parser import FastPDF, Markdown, RapidOCRImageText
+
+# Get a controller and parse a document
+ctrl = get_controller()
+chunk = ctrl.as_root_chunk("file.path")
 
 # Parse a PDF with a faster parser
 pdf_chunks = FastPDF.run(chunk)

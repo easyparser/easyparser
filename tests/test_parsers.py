@@ -150,7 +150,7 @@ def test_json():
     chunks = JsonParser.run(root)
     chunk = chunks[0]
     assert isinstance(chunk, Chunk)
-    assert isinstance(chunk.content, str)
+    assert isinstance(chunk.child.content, str)
 
 
 def test_toml():
@@ -158,7 +158,7 @@ def test_toml():
     chunks = TomlParser.run(root)
     chunk = chunks[0]
     assert isinstance(chunk, Chunk)
-    assert isinstance(chunk.content, str)
+    assert isinstance(chunk.child.content, str)
 
 
 def test_yaml():
@@ -166,7 +166,7 @@ def test_yaml():
     chunks = YamlParser.run(root)
     chunk = chunks[0]
     assert isinstance(chunk, Chunk)
-    assert isinstance(chunk.content, str)
+    assert isinstance(chunk.child.content, str)
 
 
 def test_mp3():

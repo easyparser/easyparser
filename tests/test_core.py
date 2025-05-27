@@ -64,7 +64,7 @@ class TestChunkCleanUnwrapSingleChild:
         assert parent.mimetype == MimeType.text
         assert parent.ctype == CType.Div
         assert parent.content is None
-        assert parent.metadata is None
+        assert not parent.metadata
         assert parent.child == child  # Child still exists
 
     def test_unwrap_single_child_with_parent_having_content_no_inheritance(self):
@@ -96,7 +96,7 @@ class TestChunkCleanUnwrapSingleChild:
         assert parent.mimetype == MimeType.text
         assert parent.ctype == CType.Div
         assert parent.content == "Parent content"
-        assert parent.metadata is None
+        assert not parent.metadata
         assert parent.child == child  # Child still exists
 
     def test_unwrap_single_child_with_multiple_children_no_inheritance(self):
