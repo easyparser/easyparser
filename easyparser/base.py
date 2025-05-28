@@ -936,15 +936,15 @@ class Chunk:
         from llama_index.core.schema import ImageNode, TextNode
 
         if self.mimetype and self.mimetype.startswith("image"):
-            if self.origin:
+            if self.origin and self.ctype == CType.Root:
                 return ImageNode(
                     id_=uuid.uuid4().hex,
                     image_path=self.origin.location,
                     metadata={
                         "file_path": self.origin.location,
-                        "file_name": self.origin.location,
                         "file_type": self.mimetype,
                         "chunk_id": self.id,
+                        "chunk_type": self.ctype,
                     },
                 )
             else:
@@ -952,12 +952,13 @@ class Chunk:
 
                 return ImageNode(
                     id_=uuid.uuid4().hex,
-                    image=base64.b64encode(self.content),
+                    image=base64.b64encode(self.content).decode("utf-8"),
                     image_mimetype=self.mimetype,
                     metadata={
                         "file_path": "image",
                         "file_type": self.mimetype,
                         "chunk_id": self.id,
+                        "chunk_type": self.ctype,
                     },
                 )
         else:
@@ -966,6 +967,35 @@ class Chunk:
                 text=self.content,
                 metadata={
                     "chunk_id": self.id,
+                    "chunk_type": self.ctype,
+                },
+            )
+
+    def to_langchain_node(self):
+        """Export to langchain's Document object"""
+        from langchain_core.documents import Document
+
+        if self.mimetype and self.mimetype.startswith("image"):
+            import base64
+
+            image_base64 = base64.b64encode(self.content).decode("utf-8")
+            metadata = {
+                "image_base64": image_base64,
+                "image_type": self.mimetype,
+                "chunk_id": self.id,
+                "chunk_type": self.ctype,
+            }
+            return Document(
+                page_content=self.text,
+                metadata=metadata,
+            )
+        else:
+            return Document(
+                page_content=self.content,
+                metadata={
+                    "file_type": self.mimetype,
+                    "chunk_id": self.id,
+                    "chunk_type": self.ctype,
                 },
             )
 
