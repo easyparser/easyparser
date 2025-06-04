@@ -971,7 +971,7 @@ class Chunk:
                 },
             )
 
-    def to_langchain_node(self):
+    def to_langchain_document(self):
         """Export to langchain's Document object"""
         from langchain_core.documents import Document
 
