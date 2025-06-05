@@ -31,7 +31,7 @@ flowchart LR
     end
 ```
 
-The easyparser library focuses on the critical first steps in the document processing pipeline: **Parsing** documents into a unified format, **easyparser** content intelligently, and **Representing retrieval context** for LLMs.
+The easyparser library focuses on the critical first steps in the document processing pipeline: **Parsing** documents into a unified format, **Chunking** content intelligently, and **Representing retrieval context** for LLMs.
 
 ## 🌟 Features
 
@@ -39,7 +39,7 @@ The easyparser library focuses on the critical first steps in the document proce
 - **Intelligent Structure Preservation**: Keeps document hierarchy, tables, lists, and formatting intact
 - **Modular Architecture**: Choose parsers and processing steps based on your needs
 - **Multimodal Support**: Extract and process text, images, tables, and other elements
-- **Smart easyparser Strategies**: Split content based on headers, semantic meaning, or custom rules
+- **Smart Chunking Strategies**: Split content based on headers, semantic meaning, or custom rules
 - **LLM-Ready**: Output chunks ready for embedding or use with language models
 - **Extensible**: Easy to add custom parsers and processors
 
@@ -57,6 +57,25 @@ print(chunks.render())
 # Or get a hierarchical structure
 for depth, chunk in chunks.walk():
     print("  " * depth + f"{chunk.ctype}: {chunk.content[:30]}...")
+```
+
+Sample output:
+
+```
+# truncated output
+Chunk(ctype=root, content=File assets/sample.docx)
+    Chunk(ctype=para, content=(abridged from Sam Gross’s doc: https://docs.googl... (1 more words))
+    Chunk(ctype=para, content=The goal of this project is to remove the global i... (31 more words))
+    Chunk(ctype=list, mimetype=text/plain)
+        Chunk(ctype=list, content=1. That it is feasible to remove the GIL from Python.)
+        Chunk(ctype=list, content=2. That the tradeoffs are manageable and the effor... (7 more words))
+        Chunk(ctype=list, content=3. That the main technical ideas of this project (... (16 more words))
+    Chunk(ctype=header, content=Why remove the GIL?)
+        Chunk(ctype=para, content=The GIL is a major obstacle to concurrency. For sc... (52 more words))
+    Chunk(ctype=header, content=Design)
+        Chunk(ctype=header, content=Reference counting)
+            Chunk(ctype=para, content=CPython’s reference counting system is not thread-... (48 more words))
+            ...
 ```
 
 ## 📦 Installation
@@ -139,16 +158,16 @@ img_chunks = RapidOCRImageText.run(chunk)
 Split content into meaningful chunks with different strategies:
 
 ```python
-from easyparser.split import ChunkByCharacters, FlattenToMarkdown, LumberChunker
-
-# Split by character count or word count
-chunks = ChunkByCharacters.run(doc, chunk_size=1000)
+from easyparser.split import AgenticChunker, FlattenToMarkdown, LumberChunker
 
 # Flatten hierarchical content while preserving structure
 chunks = FlattenToMarkdown.run(doc, max_size=500)
 
 # Use an LLM for semantic chunking (requires LLM setup)
 chunks = LumberChunker.run(doc, chunk_size=800)
+
+# Use an LLM for agentic chunking (requires LLM setup)
+chunks = AgenticChunker.run(doc, chunk_size=800)
 ```
 
 ### Processing Pipeline
@@ -222,7 +241,6 @@ chunks = AgenticChunker.run(doc)  # Group chunks by topic
 - Build RAG (Retrieval-Augmented Generation) systems
 - Extract structured data from unstructured documents
 - Generate document summaries with preserved structure
-- Create question-answering systems over documents
 
 ## 🤝 Contributing
 
