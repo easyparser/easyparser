@@ -38,7 +38,9 @@ class CsvParser(BaseOperation):
             )
 
             # Read the CSV file
-            with open(root.origin.location, newline="", encoding="utf-8-sig") as fi:
+            with open(
+                root.origin.location, newline="", encoding="utf-8", errors="replace"
+            ) as fi:
                 # Try to detect the dialect
                 try:
                     dialect = csv.Sniffer().sniff(fi.read(1024))
@@ -52,27 +54,30 @@ class CsvParser(BaseOperation):
                 # Process rows
                 rows = []
                 row_count = 0
-                for row_number, row in enumerate(csv_reader):
-                    # Create a string representation of the row
-                    string_io = io.StringIO()
-                    csv_writer = csv.writer(
-                        string_io,
-                        quoting=csv.QUOTE_MINIMAL,
-                        escapechar="\\",
-                        doublequote=True,
-                    )
-                    csv_writer.writerow(row)
+                try:
+                    for row_number, row in enumerate(csv_reader):
+                        # Create a string representation of the row
+                        string_io = io.StringIO()
+                        csv_writer = csv.writer(
+                            string_io,
+                            quoting=csv.QUOTE_MINIMAL,
+                            escapechar="\\",
+                            doublequote=True,
+                        )
+                        csv_writer.writerow(row)
 
-                    # Create a new row chunk
-                    row_chunk = Chunk(
-                        mimetype=MimeType.text,
-                        ctype=CType.TableRow,
-                        content=string_io.getvalue().strip(),
-                        parent=table_chunk,
-                        metadata={"row_number": row_number},
-                    )
-                    rows.append(row_chunk)
-                    row_count += 1
+                        # Create a new row chunk
+                        row_chunk = Chunk(
+                            mimetype=MimeType.text,
+                            ctype=CType.TableRow,
+                            content=string_io.getvalue().strip(),
+                            parent=table_chunk,
+                            metadata={"row_number": row_number},
+                        )
+                        rows.append(row_chunk)
+                        row_count += 1
+                except Exception as e:
+                    logger.warning(e)
 
             # Update the table metadata with the last row index
             table_chunk.metadata["last_row_with_data"] = row_count - 1

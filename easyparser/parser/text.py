@@ -19,7 +19,7 @@ class TextParser(BaseOperation):
         for root in chunks:
 
             logger.info(f"Parsing {root.origin.location}")
-            with open(root.origin.location, encoding="utf-8") as fi:
+            with open(root.origin.location, encoding="utf-8", errors="replace") as fi:
                 lines = fi.readlines()
                 content = "".join(lines)
 
